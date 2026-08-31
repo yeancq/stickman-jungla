@@ -14,9 +14,9 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg", "icons/icon-192.png", "icons/icon-512.png"],
       manifest: {
-        name: "La Persecución — Stickman Jungla",
-        short_name: "Persecución",
-        description: "Escapa del monstruo de la jungla con tu stickman y sus habilidades especiales.",
+        name: "Scape of the Monster — Stickman Jungla",
+        short_name: "Scape",
+        description: "Escapa del monstruo con tu stickman (o un animal desbloqueable) y sus habilidades especiales.",
         theme_color: "#1C5A2E",
         background_color: "#F4F1E9",
         display: "standalone",

@@ -1,9 +1,11 @@
-# La Persecución — Stickman Jungla 🌿🕷️
+# Scape of the Monster — Stickman Jungla 🌿🕷️
 
-Juego de escape hecho con React + Vite. Incluye creador de personaje, 12 habilidades
-especiales, niveles con jungla, monstruo con IA y habilidades propias, y música/efectos
-generados con Web Audio API. Configurado como **PWA** para poder "instalarse" en el
-celular u otros dispositivos, y listo para publicarse en **GitHub Pages**.
+Juego de escape hecho con React + Vite. Incluye creador de personaje, más de una
+docena de habilidades especiales (compradas con monedas), personajes animales
+desbloqueables, niveles temáticos que cambian con el progreso, monstruo con IA
+propia, y música/efectos generados con Web Audio API. Configurado como **PWA**
+para poder "instalarse" en el celular u otros dispositivos, y listo para
+publicarse en **GitHub Pages**.
 
 ## 1. Requisitos
 
@@ -40,7 +42,7 @@ También actualizá `start_url` y `scope` dentro del mismo archivo (en la secci�
 ```bash
 git init
 git add .
-git commit -m "Primer commit: La Persecución"
+git commit -m "Primer commit: Scape of the Monster"
 git branch -M main
 git remote add origin https://github.com/TU-USUARIO/NOMBRE-DEL-REPO.git
 git push -u origin main
@@ -71,24 +73,17 @@ la rama `gh-pages` en vez de GitHub Actions.
 
 ## 6. Instalarlo en el celular (PWA)
 
-Una vez publicado (o incluso probándolo en local con HTTPS/localhost):
-
-- **Android (Chrome)**: abrí el sitio → menú ⋮ → **"Instalar app"** o **"Agregar a
-  pantalla de inicio"**.
+- **Android (Chrome)**: abrí el sitio → menú ⋮ → **"Instalar app"**.
 - **iPhone/iPad (Safari)**: abrí el sitio → botón compartir 􀈂 → **"Agregar a
   pantalla de inicio"**.
 - **Escritorio (Chrome/Edge)**: aparece un ícono de instalación ⊕ en la barra de
   direcciones.
 
-El juego va a abrir en modo standalone (sin barra del navegador) y va a funcionar
-offline gracias al service worker que genera `vite-plugin-pwa`.
+## 7. Progreso guardado
 
-## 7. Íconos
-
-Los íconos en `public/icons/` son un placeholder simple generado para que el
-manifest sea válido. Si querés reemplazarlos por un diseño propio, mantené los
-mismos nombres y tamaños (`icon-192.png`, `icon-512.png`, `icon-512-maskable.png`)
-o actualizá las rutas en `vite.config.js`.
+El nombre del personaje, las monedas, las habilidades compradas y el
+desbloqueo de personajes animales se guardan en `localStorage` del navegador,
+así que persisten entre sesiones en el mismo dispositivo/navegador.
 
 ## Estructura del proyecto
 
@@ -97,7 +92,7 @@ o actualizá las rutas en `vite.config.js`.
 │   ├── icons/              íconos de la PWA
 │   └── favicon.svg
 ├── src/
-│   ├── App.jsx              creador de personaje + juego completo
+│   ├── App.jsx              intro + creador de personaje + juego completo
 │   ├── main.jsx              punto de entrada de React
 │   └── index.css             Tailwind
 ├── vite.config.js            base path + configuración PWA
