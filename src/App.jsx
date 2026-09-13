@@ -689,6 +689,33 @@ function useGameAudio() {
   return { ensureCtx, startMusic, playIntroRock, stopMusic, setMuted };
 }
 
+// Best-effort: go fullscreen and lock the screen to landscape when a run starts.
+// Every call here is guarded and silently ignored if the browser/device doesn't
+// support it (e.g. iOS Safari has no orientation lock), so it never breaks anything.
+function tryEnterLandscapeFullscreen() {
+  try {
+    const el = document.documentElement;
+    const req =
+      el.requestFullscreen ||
+      el.webkitRequestFullscreen ||
+      el.mozRequestFullScreen ||
+      el.msRequestFullscreen;
+    if (req) {
+      const result = req.call(el);
+      if (result && result.catch) result.catch(() => {});
+    }
+  } catch (e) {
+    /* fullscreen unavailable — ignore */
+  }
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock("landscape").catch(() => {});
+    }
+  } catch (e) {
+    /* orientation lock unavailable — ignore */
+  }
+}
+
 function ChaseGame({
   initialAbility = "viento",
   playerName = "",
@@ -714,6 +741,7 @@ function ChaseGame({
   const [muted, setMuted] = useState(false);
 
   const reset = useCallback((ab) => {
+    tryEnterLandscapeFullscreen();
     state.current = freshState(0, playerColor, characterKind);
     setAbility(ab);
     setHud({ lives: 3, cd: 0, status: "playing", level: 0, monsterLives: 5, monsterDefeated: false, energy: 100 });
@@ -722,6 +750,7 @@ function ChaseGame({
   }, [playerColor, characterKind]);
 
   const nextLevel = useCallback(() => {
+    tryEnterLandscapeFullscreen();
     const clearedIdx = state.current.level;
     const nextIdx = clearedIdx + 1;
     if (clearedIdx >= 9 && onLevel10Cleared) onLevel10Cleared();
@@ -3650,7 +3679,7 @@ function ChaseGame({
 
   return (
     <div
-      className="w-full flex flex-col items-center py-4 px-3"
+      className="w-full flex flex-col items-center py-4 px-3 landscape-fill"
       style={{
         background: "#F4F1E9",
         fontFamily: "'Patrick Hand', cursive",
@@ -3660,10 +3689,35 @@ function ChaseGame({
         userSelect: "none",
       }}
     >
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Kalam:wght@400;700&display=swap'); .marker{font-family:'Kalam',cursive;}`}</style>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Kalam:wght@400;700&display=swap');
+        .marker{font-family:'Kalam',cursive;}
+        .rotate-hint{ display: none; }
+        @media (orientation: portrait) and (max-width: 900px) {
+          .rotate-hint{
+            display: flex !important;
+            position: fixed; inset: 0; z-index: 100;
+            align-items: center; justify-content: center; text-align: center;
+            background: #12100E; color: #F4F1E9; padding: 24px;
+          }
+        }
+        @media (orientation: landscape) and (max-height: 500px) {
+          .landscape-fill{ padding-top: 4px !important; padding-bottom: 4px !important; }
+          .landscape-fill h1{ display: none; }
+          .landscape-fill .landscape-hide{ display: none !important; }
+          .landscape-canvas-wrap{ max-width: 96vw !important; }
+        }
+      `}</style>
+
+      <div className="rotate-hint">
+        <div>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>🔄</div>
+          <p className="marker text-lg">Girá tu teléfono para jugar en horizontal</p>
+        </div>
+      </div>
 
       <h1 className="marker text-2xl sm:text-3xl mb-0.5" style={{ color: "#2B2A28" }}>La persecución</h1>
-      <p className="text-xs sm:text-sm mb-3 text-center" style={{ color: "#5B5850" }}>
+      <p className="text-xs sm:text-sm mb-3 text-center landscape-hide" style={{ color: "#5B5850" }}>
         Desliza el joystick para moverte · Toca el botón para tu habilidad
       </p>
 
@@ -3765,7 +3819,7 @@ function ChaseGame({
       )}
 
       <div
-        className="relative rounded-lg border-2 w-full"
+        className="relative rounded-lg border-2 w-full landscape-canvas-wrap"
         style={{ borderColor: "#2B2A28", boxShadow: "3px 3px 0 #2B2A28", maxWidth: 640, aspectRatio: `${VIEW_W} / ${VIEW_H}` }}
       >
         <canvas

@@ -20,7 +20,8 @@ export default defineConfig({
         theme_color: "#1C5A2E",
         background_color: "#F4F1E9",
         display: "standalone",
-        orientation: "any",
+        // the game is designed to be played sideways on a phone
+        orientation: "landscape",
         start_url: "/stickman-jungla/",
         scope: "/stickman-jungla/",
         icons: [
