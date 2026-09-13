@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from "react";
 
 const ABILITIES = {
   viento: { price: 0, name: "Racha", accent: "#3B7FA8", cd: 3.5, dur: 1.6, tag: "Velocidad", desc: "Deja una estela de viento y esquiva al monstruo en línea recta.", stat: "Dash x2.1 · recarga 3.5s" },
@@ -689,6 +689,33 @@ function useGameAudio() {
   return { ensureCtx, startMusic, playIntroRock, stopMusic, setMuted };
 }
 
+// Best-effort: go fullscreen and lock the screen to landscape when a run starts.
+// Every call here is guarded and silently ignored if the browser/device doesn't
+// support it (e.g. iOS Safari has no orientation lock), so it never breaks anything.
+function tryEnterLandscapeFullscreen() {
+  try {
+    const el = document.documentElement;
+    const req =
+      el.requestFullscreen ||
+      el.webkitRequestFullscreen ||
+      el.mozRequestFullScreen ||
+      el.msRequestFullscreen;
+    if (req) {
+      const result = req.call(el);
+      if (result && result.catch) result.catch(() => {});
+    }
+  } catch (e) {
+    /* fullscreen unavailable — ignore */
+  }
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock("landscape").catch(() => {});
+    }
+  } catch (e) {
+    /* orientation lock unavailable — ignore */
+  }
+}
+
 function ChaseGame({
   initialAbility = "viento",
   playerName = "",
@@ -700,6 +727,8 @@ function ChaseGame({
   onWinCoins,
 }) {
   const canvasRef = useRef(null);
+  const stageRef = useRef(null);
+  const [fitSize, setFitSize] = useState(null);
   const keys = useRef({});
   const joy = useRef({ x: 0, y: 0, pointerId: null, baseX: 0, baseY: 0 });
   const joyZoneRef = useRef(null);
@@ -713,7 +742,52 @@ function ChaseGame({
   const audio = useGameAudio();
   const [muted, setMuted] = useState(false);
 
+  // Ajusta el tamaño real del área de juego al espacio disponible en pantalla
+  // (clave al voltear el celular a horizontal, donde la altura visible es chica
+  // y variable según el navegador). Mide el contenedor "stage" en vez de usar
+  // un ancho fijo, para que el juego siempre entre completo sin recortarse.
+  useLayoutEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+
+    const recalc = () => {
+      const rect = el.getBoundingClientRect();
+      const availW = rect.width;
+      const availH = rect.height;
+      if (availW <= 0 || availH <= 0) return;
+      const ratio = VIEW_W / VIEW_H;
+      let w = Math.min(availW, availH * ratio);
+      w = Math.min(w, 640);
+      w = Math.max(w, 160);
+      const h = w / ratio;
+      setFitSize({ width: Math.floor(w), height: Math.floor(h) });
+    };
+
+    recalc();
+
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(recalc) : null;
+    if (ro) ro.observe(el);
+
+    window.addEventListener("resize", recalc);
+    window.addEventListener("orientationchange", recalc);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", recalc);
+      window.visualViewport.addEventListener("scroll", recalc);
+    }
+
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener("resize", recalc);
+      window.removeEventListener("orientationchange", recalc);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", recalc);
+        window.visualViewport.removeEventListener("scroll", recalc);
+      }
+    };
+  }, [hud.status]);
+
   const reset = useCallback((ab) => {
+    tryEnterLandscapeFullscreen();
     state.current = freshState(0, playerColor, characterKind);
     setAbility(ab);
     setHud({ lives: 3, cd: 0, status: "playing", level: 0, monsterLives: 5, monsterDefeated: false, energy: 100 });
@@ -722,6 +796,7 @@ function ChaseGame({
   }, [playerColor, characterKind]);
 
   const nextLevel = useCallback(() => {
+    tryEnterLandscapeFullscreen();
     const clearedIdx = state.current.level;
     const nextIdx = clearedIdx + 1;
     if (clearedIdx >= 9 && onLevel10Cleared) onLevel10Cleared();
@@ -3650,20 +3725,50 @@ function ChaseGame({
 
   return (
     <div
-      className="w-full flex flex-col items-center py-4 px-3"
+      className="w-full flex flex-col items-center py-4 px-3 landscape-fill game-root"
       style={{
         background: "#F4F1E9",
         fontFamily: "'Patrick Hand', cursive",
-        minHeight: "100vh",
+        height: "100vh",
         touchAction: hud.status === "playing" ? "none" : "pan-y",
         overscrollBehavior: "contain",
         userSelect: "none",
+        overflowY: hud.status === "menu" ? "auto" : "hidden",
+        boxSizing: "border-box",
       }}
     >
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Kalam:wght@400;700&display=swap'); .marker{font-family:'Kalam',cursive;}`}</style>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Kalam:wght@400;700&display=swap');
+        .marker{font-family:'Kalam',cursive;}
+        .rotate-hint{ display: none; }
+        /* dvh evita que la barra del navegador móvil deje espacio de más o de menos */
+        @supports (height: 100dvh) {
+          .game-root{ height: 100dvh; }
+        }
+        @media (orientation: portrait) and (max-width: 900px) {
+          .rotate-hint{
+            display: flex !important;
+            position: fixed; inset: 0; z-index: 100;
+            align-items: center; justify-content: center; text-align: center;
+            background: #12100E; color: #F4F1E9; padding: 24px;
+          }
+        }
+        @media (orientation: landscape) and (max-height: 500px) {
+          .landscape-fill{ padding-top: 4px !important; padding-bottom: 4px !important; }
+          .landscape-fill h1{ display: none; }
+          .landscape-fill .landscape-hide{ display: none !important; }
+        }
+      `}</style>
+
+      <div className="rotate-hint">
+        <div>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>🔄</div>
+          <p className="marker text-lg">Girá tu teléfono para jugar en horizontal</p>
+        </div>
+      </div>
 
       <h1 className="marker text-2xl sm:text-3xl mb-0.5" style={{ color: "#2B2A28" }}>La persecución</h1>
-      <p className="text-xs sm:text-sm mb-3 text-center" style={{ color: "#5B5850" }}>
+      <p className="text-xs sm:text-sm mb-3 text-center landscape-hide" style={{ color: "#5B5850" }}>
         Desliza el joystick para moverte · Toca el botón para tu habilidad
       </p>
 
@@ -3719,6 +3824,11 @@ function ChaseGame({
         </div>
       )}
 
+      <div
+        ref={stageRef}
+        className="w-full flex-1 flex flex-col items-center justify-center"
+        style={{ minHeight: 0, minWidth: 0 }}
+      >
       {hud.status !== "menu" && (
         <div className="flex items-center gap-3 mb-2 w-full max-w-[640px] justify-between px-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -3765,8 +3875,24 @@ function ChaseGame({
       )}
 
       <div
-        className="relative rounded-lg border-2 w-full"
-        style={{ borderColor: "#2B2A28", boxShadow: "3px 3px 0 #2B2A28", maxWidth: 640, aspectRatio: `${VIEW_W} / ${VIEW_H}` }}
+        className="relative rounded-lg border-2 landscape-canvas-wrap"
+        style={
+          fitSize
+            ? {
+                borderColor: "#2B2A28",
+                boxShadow: "3px 3px 0 #2B2A28",
+                width: fitSize.width,
+                height: fitSize.height,
+                flex: "0 0 auto",
+              }
+            : {
+                borderColor: "#2B2A28",
+                boxShadow: "3px 3px 0 #2B2A28",
+                width: "100%",
+                maxWidth: 640,
+                aspectRatio: `${VIEW_W} / ${VIEW_H}`,
+              }
+        }
       >
         <canvas
           ref={canvasRef}
@@ -3857,6 +3983,7 @@ function ChaseGame({
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
