@@ -3844,11 +3844,6 @@ function ChaseGame({
         </div>
       )}
 
-      <div
-        ref={stageRef}
-        className="w-full flex flex-col items-center"
-        style={{ minWidth: 0 }}
-      >
       {hud.status !== "menu" && (
         <div className="flex items-center gap-3 mb-2 w-full max-w-[640px] justify-between px-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -3895,7 +3890,8 @@ function ChaseGame({
       )}
 
       <div
-        className="relative rounded-lg border-2 landscape-canvas-wrap"
+        ref={stageRef}
+        className="relative rounded-lg border-2 w-full landscape-canvas-wrap"
         style={
           fitSize
             ? {
@@ -4003,7 +3999,6 @@ function ChaseGame({
             </div>
           </div>
         )}
-      </div>
       </div>
     </div>
   );
