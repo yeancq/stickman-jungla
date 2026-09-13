@@ -742,46 +742,66 @@ function ChaseGame({
   const audio = useGameAudio();
   const [muted, setMuted] = useState(false);
 
-  // Ajusta el tamaño real del área de juego al espacio disponible en pantalla
-  // (clave al voltear el celular a horizontal, donde la altura visible es chica
-  // y variable según el navegador). Mide el contenedor "stage" en vez de usar
-  // un ancho fijo, para que el juego siempre entre completo sin recortarse.
+  // Ajusta el tamaño real del área de juego al espacio disponible en pantalla.
+  // En vez de confiar en truquitos de CSS (flex/vh, que en varios navegadores
+  // móviles miden mal la altura visible real), medimos directamente:
+  //   - el alto real visible con visualViewport (se ajusta solo si aparece
+  //     barra del navegador, teclado, o cambia por pantalla completa/rotación)
+  //   - el punto exacto donde empieza el área del juego (getBoundingClientRect)
+  // y calculamos el tamaño máximo que entra completo sin recortarse.
   useLayoutEffect(() => {
-    const el = stageRef.current;
-    if (!el) return;
+    const stageEl = stageRef.current;
+    if (!stageEl) return;
 
+    let raf = null;
     const recalc = () => {
-      const rect = el.getBoundingClientRect();
+      const vv = window.visualViewport;
+      const viewportH = vv ? vv.height : window.innerHeight;
+      const rect = stageEl.getBoundingClientRect();
+      const bottomMargin = 6;
       const availW = rect.width;
-      const availH = rect.height;
+      const availH = viewportH - rect.top - bottomMargin;
       if (availW <= 0 || availH <= 0) return;
       const ratio = VIEW_W / VIEW_H;
       let w = Math.min(availW, availH * ratio);
       w = Math.min(w, 640);
       w = Math.max(w, 160);
       const h = w / ratio;
-      setFitSize({ width: Math.floor(w), height: Math.floor(h) });
+      const nw = Math.floor(w), nh = Math.floor(h);
+      setFitSize((prev) => (prev && prev.width === nw && prev.height === nh ? prev : { width: nw, height: nh }));
     };
 
-    recalc();
+    const scheduleRecalc = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(recalc);
+    };
 
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(recalc) : null;
-    if (ro) ro.observe(el);
+    scheduleRecalc();
+    // Reintentos cortos: la pantalla completa y el bloqueo de orientación son
+    // asíncronos y pueden cambiar el tamaño visible unos instantes después.
+    const timers = [80, 250, 500, 900, 1500].map((t) => setTimeout(scheduleRecalc, t));
 
-    window.addEventListener("resize", recalc);
-    window.addEventListener("orientationchange", recalc);
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(scheduleRecalc) : null;
+    if (ro) ro.observe(stageEl);
+
+    window.addEventListener("resize", scheduleRecalc);
+    window.addEventListener("orientationchange", scheduleRecalc);
+    document.addEventListener("fullscreenchange", scheduleRecalc);
     if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", recalc);
-      window.visualViewport.addEventListener("scroll", recalc);
+      window.visualViewport.addEventListener("resize", scheduleRecalc);
+      window.visualViewport.addEventListener("scroll", scheduleRecalc);
     }
 
     return () => {
+      if (raf) cancelAnimationFrame(raf);
+      timers.forEach(clearTimeout);
       if (ro) ro.disconnect();
-      window.removeEventListener("resize", recalc);
-      window.removeEventListener("orientationchange", recalc);
+      window.removeEventListener("resize", scheduleRecalc);
+      window.removeEventListener("orientationchange", scheduleRecalc);
+      document.removeEventListener("fullscreenchange", scheduleRecalc);
       if (window.visualViewport) {
-        window.visualViewport.removeEventListener("resize", recalc);
-        window.visualViewport.removeEventListener("scroll", recalc);
+        window.visualViewport.removeEventListener("resize", scheduleRecalc);
+        window.visualViewport.removeEventListener("scroll", scheduleRecalc);
       }
     };
   }, [hud.status]);
@@ -3729,7 +3749,7 @@ function ChaseGame({
       style={{
         background: "#F4F1E9",
         fontFamily: "'Patrick Hand', cursive",
-        height: "100vh",
+        minHeight: "100vh",
         touchAction: hud.status === "playing" ? "none" : "pan-y",
         overscrollBehavior: "contain",
         userSelect: "none",
@@ -3743,7 +3763,7 @@ function ChaseGame({
         .rotate-hint{ display: none; }
         /* dvh evita que la barra del navegador móvil deje espacio de más o de menos */
         @supports (height: 100dvh) {
-          .game-root{ height: 100dvh; }
+          .game-root{ min-height: 100dvh; }
         }
         @media (orientation: portrait) and (max-width: 900px) {
           .rotate-hint{
@@ -3826,8 +3846,8 @@ function ChaseGame({
 
       <div
         ref={stageRef}
-        className="w-full flex-1 flex flex-col items-center justify-center"
-        style={{ minHeight: 0, minWidth: 0 }}
+        className="w-full flex flex-col items-center"
+        style={{ minWidth: 0 }}
       >
       {hud.status !== "menu" && (
         <div className="flex items-center gap-3 mb-2 w-full max-w-[640px] justify-between px-1">
