@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from "react";
+import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
 
 const ABILITIES = {
   viento: { price: 0, name: "Racha", accent: "#3B7FA8", cd: 3.5, dur: 1.6, tag: "Velocidad", desc: "Deja una estela de viento y esquiva al monstruo en línea recta.", stat: "Dash x2.1 · recarga 3.5s" },
@@ -727,8 +727,6 @@ function ChaseGame({
   onWinCoins,
 }) {
   const canvasRef = useRef(null);
-  const stageRef = useRef(null);
-  const [fitSize, setFitSize] = useState(null);
   const keys = useRef({});
   const joy = useRef({ x: 0, y: 0, pointerId: null, baseX: 0, baseY: 0 });
   const joyZoneRef = useRef(null);
@@ -741,70 +739,6 @@ function ChaseGame({
   const [pick, setPick] = useState(initialAbility);
   const audio = useGameAudio();
   const [muted, setMuted] = useState(false);
-
-  // Ajusta el tamaño real del área de juego al espacio disponible en pantalla.
-  // En vez de confiar en truquitos de CSS (flex/vh, que en varios navegadores
-  // móviles miden mal la altura visible real), medimos directamente:
-  //   - el alto real visible con visualViewport (se ajusta solo si aparece
-  //     barra del navegador, teclado, o cambia por pantalla completa/rotación)
-  //   - el punto exacto donde empieza el área del juego (getBoundingClientRect)
-  // y calculamos el tamaño máximo que entra completo sin recortarse.
-  useLayoutEffect(() => {
-    const stageEl = stageRef.current;
-    if (!stageEl) return;
-
-    let raf = null;
-    const recalc = () => {
-      const vv = window.visualViewport;
-      const viewportH = vv ? vv.height : window.innerHeight;
-      const rect = stageEl.getBoundingClientRect();
-      const bottomMargin = 6;
-      const availW = rect.width;
-      const availH = viewportH - rect.top - bottomMargin;
-      if (availW <= 0 || availH <= 0) return;
-      const ratio = VIEW_W / VIEW_H;
-      let w = Math.min(availW, availH * ratio);
-      w = Math.min(w, 640);
-      w = Math.max(w, 160);
-      const h = w / ratio;
-      const nw = Math.floor(w), nh = Math.floor(h);
-      setFitSize((prev) => (prev && prev.width === nw && prev.height === nh ? prev : { width: nw, height: nh }));
-    };
-
-    const scheduleRecalc = () => {
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(recalc);
-    };
-
-    scheduleRecalc();
-    // Reintentos cortos: la pantalla completa y el bloqueo de orientación son
-    // asíncronos y pueden cambiar el tamaño visible unos instantes después.
-    const timers = [80, 250, 500, 900, 1500].map((t) => setTimeout(scheduleRecalc, t));
-
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(scheduleRecalc) : null;
-    if (ro) ro.observe(stageEl);
-
-    window.addEventListener("resize", scheduleRecalc);
-    window.addEventListener("orientationchange", scheduleRecalc);
-    document.addEventListener("fullscreenchange", scheduleRecalc);
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", scheduleRecalc);
-      window.visualViewport.addEventListener("scroll", scheduleRecalc);
-    }
-
-    return () => {
-      if (raf) cancelAnimationFrame(raf);
-      timers.forEach(clearTimeout);
-      if (ro) ro.disconnect();
-      window.removeEventListener("resize", scheduleRecalc);
-      window.removeEventListener("orientationchange", scheduleRecalc);
-      document.removeEventListener("fullscreenchange", scheduleRecalc);
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener("resize", scheduleRecalc);
-        window.visualViewport.removeEventListener("scroll", scheduleRecalc);
-      }
-    };
-  }, [hud.status]);
 
   const reset = useCallback((ab) => {
     tryEnterLandscapeFullscreen();
@@ -3749,7 +3683,7 @@ function ChaseGame({
       style={{
         background: "#F4F1E9",
         fontFamily: "'Patrick Hand', cursive",
-        minHeight: "100vh",
+        height: "100vh",
         touchAction: hud.status === "playing" ? "none" : "pan-y",
         overscrollBehavior: "contain",
         userSelect: "none",
@@ -3761,9 +3695,30 @@ function ChaseGame({
         @import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Kalam:wght@400;700&display=swap');
         .marker{font-family:'Kalam',cursive;}
         .rotate-hint{ display: none; }
-        /* dvh evita que la barra del navegador móvil deje espacio de más o de menos */
+        /* dvh evita que la barra del navegador móvil deje espacio de más o de menos
+           que la altura real visible (clave en Android/iOS con barras del navegador) */
         @supports (height: 100dvh) {
-          .game-root{ min-height: 100dvh; }
+          .game-root{ height: 100dvh; }
+        }
+        /* El "marco" del juego nunca tiene ancho/alto fijo: solo un tope máximo
+           de ancho Y de alto a la vez (100% del espacio que le da .game-stage),
+           manteniendo siempre la proporción 640x420. El navegador elige el
+           tamaño más grande posible que respete ambos topes — así el juego
+           jamás se sale de la pantalla, se achique lo que se achique. */
+        .game-stage{
+          flex: 1 1 auto;
+          min-height: 0;
+          min-width: 0;
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .game-frame{
+          position: relative;
+          max-width: 100%;
+          max-height: 100%;
+          aspect-ratio: ${VIEW_W} / ${VIEW_H};
         }
         @media (orientation: portrait) and (max-width: 900px) {
           .rotate-hint{
@@ -3889,26 +3844,10 @@ function ChaseGame({
         </div>
       )}
 
+      <div className="game-stage">
       <div
-        ref={stageRef}
-        className="relative rounded-lg border-2 w-full landscape-canvas-wrap"
-        style={
-          fitSize
-            ? {
-                borderColor: "#2B2A28",
-                boxShadow: "3px 3px 0 #2B2A28",
-                width: fitSize.width,
-                height: fitSize.height,
-                flex: "0 0 auto",
-              }
-            : {
-                borderColor: "#2B2A28",
-                boxShadow: "3px 3px 0 #2B2A28",
-                width: "100%",
-                maxWidth: 640,
-                aspectRatio: `${VIEW_W} / ${VIEW_H}`,
-              }
-        }
+        className="relative rounded-lg border-2 game-frame"
+        style={{ borderColor: "#2B2A28", boxShadow: "3px 3px 0 #2B2A28" }}
       >
         <canvas
           ref={canvasRef}
@@ -3999,6 +3938,7 @@ function ChaseGame({
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
