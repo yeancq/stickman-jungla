@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from "react";
 
 const ABILITIES = {
   viento: { price: 0, name: "Racha", accent: "#3B7FA8", cd: 3.5, dur: 1.6, tag: "Velocidad", desc: "Deja una estela de viento y esquiva al monstruo en línea recta.", stat: "Dash x2.1 · recarga 3.5s" },
@@ -16,7 +16,8 @@ const ABILITIES = {
   ladron: { price: 40, name: "Ladrón", accent: "#B8860B", cd: 7, dur: 0, tag: "Robo", desc: "Lanza un gancho que le roba una vida al monstruo; esa vida pasa a ser tuya.", stat: "Roba 1 vida · recarga 7s" },
 };
 
-const VIEW_W = 640, VIEW_H = 420;
+let VIEW_W = 900;
+const VIEW_H = 420;
 const WORLD_W = 1700, WORLD_H = 420;
 
 const BORDER_WALLS = [
@@ -727,6 +728,7 @@ function ChaseGame({
   onWinCoins,
 }) {
   const canvasRef = useRef(null);
+  const stageRef = useRef(null);
   const keys = useRef({});
   const joy = useRef({ x: 0, y: 0, pointerId: null, baseX: 0, baseY: 0 });
   const joyZoneRef = useRef(null);
@@ -739,6 +741,151 @@ function ChaseGame({
   const [pick, setPick] = useState(initialAbility);
   const audio = useGameAudio();
   const [muted, setMuted] = useState(false);
+
+  // Alto real de la ventana en píxeles, medido por JS. En vez de confiar en
+  // unidades CSS (vh/dvh), que en varios navegadores/WebViews de Android NO
+  // se recalculan correctamente al rotar el celular o al entrar a pantalla
+  // completa, medimos y aplicamos el valor real nosotros mismos. Así el
+  // contenedor del juego SIEMPRE tiene la altura exacta de lo que se ve.
+  const getViewportH = () => {
+    if (typeof window === "undefined") return 800;
+    const vv = window.visualViewport;
+    return Math.round((vv ? vv.height : window.innerHeight) || window.innerHeight || 800);
+  };
+  const [viewportH, setViewportH] = useState(getViewportH);
+
+  useEffect(() => {
+    let raf = null;
+    const measure = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        setViewportH((prev) => {
+          const next = getViewportH();
+          return prev === next ? prev : next;
+        });
+      });
+    };
+
+    measure();
+    // Reintentos cortos: pantalla completa y bloqueo de orientación son
+    // asíncronos, y algunos navegadores tardan un instante en reportar el
+    // tamaño real después de rotar el celular.
+    const timers = [50, 150, 300, 600, 1000, 1600, 2500].map((t) => setTimeout(measure, t));
+
+    window.addEventListener("resize", measure);
+    window.addEventListener("orientationchange", measure);
+    document.addEventListener("fullscreenchange", measure);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", measure);
+      window.visualViewport.addEventListener("scroll", measure);
+    }
+    if (window.screen && window.screen.orientation) {
+      window.screen.orientation.addEventListener("change", measure);
+    }
+
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      timers.forEach(clearTimeout);
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("orientationchange", measure);
+      document.removeEventListener("fullscreenchange", measure);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", measure);
+        window.visualViewport.removeEventListener("scroll", measure);
+      }
+      if (window.screen && window.screen.orientation) {
+        window.screen.orientation.removeEventListener("change", measure);
+      }
+    };
+  }, [hud.status]);
+
+  // Llenamos SIEMPRE el 100% del espacio disponible, pero para que el
+  // Stickman y todo lo demás no se vea estirado, la resolución interna del
+  // canvas (VIEW_W) tiene que tener EXACTAMENTE la misma proporción que ese
+  // espacio. Actualizamos las dos cosas (resolución del canvas y tamaño en
+  // pantalla) en el mismo instante, de forma directa sobre el DOM, para que
+  // nunca queden un paso desincronizadas (eso era lo que causaba el
+  // estiramiento: el canvas quedaba un instante con la proporción vieja
+  // mientras el CSS ya lo estiraba a la proporción nueva).
+  const [frameSize, setFrameSize] = useState(null);
+
+  useLayoutEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+
+    let raf = null;
+    const recalcFrame = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const availW = el.clientWidth;
+        const availH = el.clientHeight;
+        if (availW <= 0 || availH <= 0) return;
+
+        // El marco tiene un borde de 2px por lado ("border-2"): el canvas
+        // vive en el área DENTRO de ese borde, así que la proporción hay que
+        // calcularla sobre esa área real, no sobre el tamaño exterior del
+        // marco — si no, queda un desajuste mínimo pero real.
+        const BORDER = 4;
+        const contentW = Math.max(1, availW - BORDER);
+        const contentH = Math.max(1, availH - BORDER);
+
+        const exactRatio = contentW / contentH;
+        const idealViewW = VIEW_H * exactRatio;
+        let newViewW = Math.round(idealViewW);
+        const clamped = newViewW < 500 || newViewW > 1600;
+        newViewW = Math.max(500, Math.min(1600, newViewW)); // límite de seguridad, dentro de WORLD_W=1700
+
+        // Resolución interna del canvas: se actualiza YA, en el mismo tick,
+        // directo sobre el elemento — no esperamos al próximo render.
+        VIEW_W = newViewW;
+        if (canvasRef.current) {
+          canvasRef.current.width = newViewW;
+        }
+
+        // Caso normal: la proporción del canvas ya coincide exacto con la
+        // pantalla disponible → llenamos el 100%, sin distorsión posible.
+        // Caso extremo (proporción de pantalla rarísima, fuera del límite de
+        // seguridad de arriba): en vez de forzar el llenado y arriesgar
+        // deformar el dibujo, mantenemos la proporción real y dejamos un
+        // margen mínimo — nunca se estira.
+        let w, h;
+        if (!clamped) {
+          w = availW;
+          h = availH;
+        } else {
+          const ratio = newViewW / VIEW_H;
+          w = Math.min(availW, availH * ratio);
+          h = w / ratio;
+        }
+        w = Math.floor(w);
+        h = Math.floor(h);
+        setFrameSize((prev) => (prev && prev.w === w && prev.h === h && prev.viewW === newViewW ? prev : { w, h, viewW: newViewW }));
+      });
+    };
+
+    recalcFrame();
+    const timers = [50, 150, 300, 600, 1000, 1600, 2500].map((t) => setTimeout(recalcFrame, t));
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(recalcFrame) : null;
+    if (ro) ro.observe(el);
+    window.addEventListener("resize", recalcFrame);
+    window.addEventListener("orientationchange", recalcFrame);
+    document.addEventListener("fullscreenchange", recalcFrame);
+    if (window.screen && window.screen.orientation) {
+      window.screen.orientation.addEventListener("change", recalcFrame);
+    }
+
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      timers.forEach(clearTimeout);
+      if (ro) ro.disconnect();
+      window.removeEventListener("resize", recalcFrame);
+      window.removeEventListener("orientationchange", recalcFrame);
+      document.removeEventListener("fullscreenchange", recalcFrame);
+      if (window.screen && window.screen.orientation) {
+        window.screen.orientation.removeEventListener("change", recalcFrame);
+      }
+    };
+  }, [hud.status]);
 
   const reset = useCallback((ab) => {
     tryEnterLandscapeFullscreen();
@@ -3679,11 +3826,11 @@ function ChaseGame({
 
   return (
     <div
-      className="w-full flex flex-col items-center py-4 px-3 landscape-fill game-root"
+      className="w-full flex flex-col items-center py-1 px-2 landscape-fill game-root"
       style={{
         background: "#F4F1E9",
         fontFamily: "'Patrick Hand', cursive",
-        height: "100vh",
+        height: viewportH ? `${viewportH}px` : "100vh",
         touchAction: hud.status === "playing" ? "none" : "pan-y",
         overscrollBehavior: "contain",
         userSelect: "none",
@@ -3695,16 +3842,16 @@ function ChaseGame({
         @import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Kalam:wght@400;700&display=swap');
         .marker{font-family:'Kalam',cursive;}
         .rotate-hint{ display: none; }
-        /* dvh evita que la barra del navegador móvil deje espacio de más o de menos
-           que la altura real visible (clave en Android/iOS con barras del navegador) */
-        @supports (height: 100dvh) {
-          .game-root{ height: 100dvh; }
-        }
         /* El "marco" del juego nunca tiene ancho/alto fijo: solo un tope máximo
            de ancho Y de alto a la vez (100% del espacio que le da .game-stage),
            manteniendo siempre la proporción 640x420. El navegador elige el
            tamaño más grande posible que respete ambos topes — así el juego
            jamás se sale de la pantalla, se achique lo que se achique. */
+        /* .game-stage centra el marco en el espacio disponible. El tamaño
+           exacto del marco (en píxeles, calculado en JS para no deformar
+           nada) se aplica como estilo inline en frameSize — acá solo dejamos
+           un tamaño de arranque razonable para el primer instante, antes de
+           que el efecto JS mida y ajuste. */
         .game-stage{
           flex: 1 1 auto;
           min-height: 0;
@@ -3718,7 +3865,11 @@ function ChaseGame({
           position: relative;
           max-width: 100%;
           max-height: 100%;
-          aspect-ratio: ${VIEW_W} / ${VIEW_H};
+        }
+        .game-frame canvas{
+          display: block;
+          width: 100%;
+          height: 100%;
         }
         @media (orientation: portrait) and (max-width: 900px) {
           .rotate-hint{
@@ -3728,10 +3879,16 @@ function ChaseGame({
             background: #12100E; color: #F4F1E9; padding: 24px;
           }
         }
-        @media (orientation: landscape) and (max-height: 500px) {
-          .landscape-fill{ padding-top: 4px !important; padding-bottom: 4px !important; }
+        /* En horizontal (el único modo real de juego — en vertical se tapa
+           todo con .rotate-hint) sacamos título/subtítulo y achicamos
+           paddings/márgenes SIEMPRE, no solo en pantallas muy bajas, para
+           que el marco del juego (que mantiene su proporción) llegue a su
+           tamaño máximo real dentro de la pantalla. */
+        @media (orientation: landscape) {
+          .landscape-fill{ padding-top: 2px !important; padding-bottom: 2px !important; padding-left: 4px !important; padding-right: 4px !important; }
           .landscape-fill h1{ display: none; }
           .landscape-fill .landscape-hide{ display: none !important; }
+          .landscape-fill .hud-bar{ margin-bottom: 3px !important; }
         }
       `}</style>
 
@@ -3800,7 +3957,7 @@ function ChaseGame({
       )}
 
       {hud.status !== "menu" && (
-        <div className="flex items-center gap-3 mb-2 w-full max-w-[640px] justify-between px-1">
+        <div className="flex items-center gap-3 mb-2 w-full max-w-[640px] justify-between px-1 hud-bar">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs sm:text-sm marker" style={{ color: "#5B5850" }}>Nivel {hud.level + 1}</span>
             {playerName && (
@@ -3844,16 +4001,20 @@ function ChaseGame({
         </div>
       )}
 
-      <div className="game-stage">
+      <div className="game-stage" ref={stageRef}>
       <div
         className="relative rounded-lg border-2 game-frame"
-        style={{ borderColor: "#2B2A28", boxShadow: "3px 3px 0 #2B2A28" }}
+        style={{
+          borderColor: "#2B2A28",
+          boxShadow: "3px 3px 0 #2B2A28",
+          ...(frameSize ? { width: frameSize.w, height: frameSize.h } : { width: "100%", aspectRatio: `${VIEW_W} / ${VIEW_H}` }),
+        }}
       >
         <canvas
           ref={canvasRef}
           width={VIEW_W}
           height={VIEW_H}
-          style={{ width: "100%", height: "100%", display: "block", borderRadius: 6 }}
+          style={{ display: "block", width: "100%", height: "100%", borderRadius: 6 }}
         />
 
         {hud.status === "playing" && (
