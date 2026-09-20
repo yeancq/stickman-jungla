@@ -1202,6 +1202,13 @@ function ChaseGame({
     // asíncronos, y algunos navegadores tardan un instante en reportar el
     // tamaño real después de rotar el celular.
     const timers = [50, 150, 300, 600, 1000, 1600, 2500].map((t) => setTimeout(measure, t));
+    // Además de los eventos y reintentos cortos de arriba, seguimos
+    // chequeando cada 400ms TODO el tiempo (no solo al principio). Esto es
+    // a prueba de balas contra navegadores/celulares que tardan más de lo
+    // esperado en asentarse, o que no disparan ningún evento de resize
+    // después de terminar la transición — nunca dependemos de "adivinar"
+    // cuántos reintentos alcanzan.
+    const poll = setInterval(measure, 400);
 
     window.addEventListener("resize", measure);
     window.addEventListener("orientationchange", measure);
@@ -1217,6 +1224,7 @@ function ChaseGame({
     return () => {
       if (raf) cancelAnimationFrame(raf);
       timers.forEach(clearTimeout);
+      clearInterval(poll);
       window.removeEventListener("resize", measure);
       window.removeEventListener("orientationchange", measure);
       document.removeEventListener("fullscreenchange", measure);
@@ -1309,6 +1317,10 @@ function ChaseGame({
 
     recalcFrame();
     const timers = [50, 150, 300, 600, 1000, 1600, 2500].map((t) => setTimeout(recalcFrame, t));
+    // Chequeo continuo cada 400ms mientras dure esta pantalla, además del
+    // ResizeObserver y los eventos — misma lógica a prueba de balas que en
+    // la medición de altura real de arriba.
+    const poll = setInterval(recalcFrame, 400);
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(recalcFrame) : null;
     if (ro) ro.observe(el);
     window.addEventListener("resize", recalcFrame);
@@ -1321,6 +1333,7 @@ function ChaseGame({
     return () => {
       if (raf) cancelAnimationFrame(raf);
       timers.forEach(clearTimeout);
+      clearInterval(poll);
       if (ro) ro.disconnect();
       window.removeEventListener("resize", recalcFrame);
       window.removeEventListener("orientationchange", recalcFrame);
