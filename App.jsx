@@ -5,7 +5,7 @@ const ABILITIES = {
   sigilo: { price: 35, name: "Bruma", accent: "#7A5EA8", cd: 5.5, dur: 2.6, tag: "Sigilo", desc: "Se vuelve casi transparente; el monstruo pierde el rastro.", stat: "2.6s invisible · recarga 5.5s" },
   tiempo: { price: 45, name: "Tiempo", accent: "#3FA089", cd: 6, dur: 3, tag: "Congelar", desc: "Lanza un reloj verde que detiene el tiempo para todos unos segundos.", stat: "Congela 3s · recarga 6s" },
   clon: { price: 45, name: "Clon", accent: "#9B4F96", cd: 8, dur: 6, tag: "Señuelo", desc: "Deja un doble; si el monstruo te atrapa mientras dura, el clon se sacrifica y no perdés vidas.", stat: "Dura 6s · recarga 8s" },
-  fase: { price: 35, name: "Fase", accent: "#2E93A6", cd: 4.5, dur: 0, tag: "Teletransporte", desc: "Te mueve varios pasos hacia adelante, atravesando cualquier pared en el camino.", stat: "~120px · recarga 4.5s" },
+  fase: { price: 35, name: "Fase", accent: "#2E93A6", cd: 4.5, dur: 0, tag: "Teletransporte", desc: "Extiende la mano, abre un portal y salta al otro lado, atravesando cualquier pared en el camino.", stat: "~120px · recarga 4.5s" },
   electrico: { price: 40, name: "Descarga", accent: "#C9A227", cd: 5.5, dur: 0, tag: "Aturdimiento", desc: "Lanza un rayo amarillo que paraliza al monstruo un rato al impactar.", stat: "Paraliza ~2.6s · recarga 5.5s" },
   fuego: { price: 35, name: "Brasa", accent: "#E8460F", cd: 5, dur: 2.2, tag: "Fuego", desc: "Deja un rastro de llamas vivas que queman al monstruo si se acerca.", stat: "2.2s de rastro · recarga 5s" },
   mutar: { price: 45, name: "Mutar", accent: "#4C9A2A", cd: 6, dur: 3, tag: "Veneno", desc: "Le crece una cola y corre a cuatro patas; lanza gas verde que paraliza al monstruo.", stat: "Paraliza ~2.9s · recarga 6s" },
@@ -13,7 +13,7 @@ const ABILITIES = {
   laser: { price: 60, name: "Láser", accent: "#E63946", cd: 7, dur: 0, tag: "Demolición", desc: "Dispara un láser desde la cabeza que rompe la primera pared que encuentra.", stat: "Rompe 1 pared · recarga 7s" },
   sierra: { price: 45, name: "Sierra", accent: "#7C868D", cd: 8, dur: 4, tag: "Escudo", desc: "Dos sierras te rodean y te protegen de todo; si tocás un animal con ellas activas, desaparece.", stat: "Escudo 4s · recarga 8s" },
   tornado: { price: 50, name: "Tornado", accent: "#5C8AA6", cd: 9, dur: 1.2, tag: "Torbellino", desc: "Giras y un tornado te arrastra a gran velocidad; lanza otro en sentido contrario que se lleva al monstruo si lo toca.", stat: "1.2s de impulso · recarga 9s" },
-  ladron: { price: 40, name: "Ladrón", accent: "#B8860B", cd: 7, dur: 0, tag: "Robo", desc: "Lanza un gancho que le roba una vida al monstruo; esa vida pasa a ser tuya.", stat: "Roba 1 vida · recarga 7s" },
+  ladron: { price: 40, name: "Ladrón", accent: "#B8860B", cd: 7, dur: 0, tag: "Robo", desc: "Lanza un gran rayo que le roba una vida al monstruo; esa vida pasa a ser tuya. Si el monstruo te toca, quedás cortado por la mitad hasta que uses el robo.", stat: "Roba 1 vida · recarga 7s" },
 };
 
 let VIEW_W = 900;
@@ -216,6 +216,421 @@ const EXIT = { x: WORLD_W - 14, y: WORLD_H / 2 - 45, w: 14, h: 90 };
 const PLAYER_R = 12, MONSTER_R = 16;
 const SUPER_HOLD = 0.9;
 const PUDDLE_SLOW = 0.42;
+// Racha (velocidad): el juego se congela mientras el stickman se convierte en energía azul
+const RACHA_CHARGE_T = 1.15;   // segundos de pausa total + transformación
+const RACHA_REVEAL_T = 0.4;    // segundos que tarda en reaparecer el cuerpo al terminar la velocidad
+const RACHA_TRAIL_LIFE = 0.45; // duración de la estela de energía
+
+let _rachaOff = null; // canvas auxiliar para desvanecer el cuerpo de cualquier personaje
+
+function drawRachaTrail(ctx, s) {
+  const tr = s.rachaTrail;
+  if (!tr || tr.length < 2) return;
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  for (let i = 1; i < tr.length; i++) {
+    const a = tr[i - 1], b = tr[i];
+    if (Math.hypot(b.x - a.x, b.y - a.y) > 40) continue;
+    const k = Math.max(0, 1 - b.age / RACHA_TRAIL_LIFE);
+    ctx.strokeStyle = `rgba(40,120,255,${0.35 * k})`;
+    ctx.lineWidth = 4 + 18 * k;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    ctx.strokeStyle = `rgba(190,230,255,${0.9 * k})`;
+    ctx.lineWidth = 1.5 + 6 * k;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawRachaHalo(ctx, s, x, y, glow, charging, prog) {
+  const c = s.rachaClock || 0;
+  const cy = y - 2;
+  const pulse = 1 + Math.sin(c * 20) * 0.07;
+  const R = (charging ? 24 + 30 * (prog || 0) : 40) * pulse;
+  ctx.save();
+  const grd = ctx.createRadialGradient(x, cy, 2, x, cy, R);
+  grd.addColorStop(0, `rgba(140,210,255,${0.8 * glow})`);
+  grd.addColorStop(0.5, `rgba(50,130,255,${0.5 * glow})`);
+  grd.addColorStop(1, "rgba(40,110,255,0)");
+  ctx.fillStyle = grd;
+  ctx.beginPath();
+  ctx.arc(x, cy, R, 0, Math.PI * 2);
+  ctx.fill();
+  if (charging) {
+    const a = Math.min(1, (prog || 0) * 4);
+    // chispas de energía entrando hacia el stickman
+    ctx.lineCap = "round";
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 12; i++) {
+      const ph = (c * 1.6 + i * 0.173) % 1;
+      const ang = i * 2.399 + c * 2;
+      const d1 = R * 1.5 * (1 - ph) + 6;
+      const d2 = d1 + 8;
+      ctx.strokeStyle = `rgba(120,190,255,${a * (0.4 + 0.6 * ph)})`;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(ang) * d1, cy + Math.sin(ang) * d1);
+      ctx.lineTo(x + Math.cos(ang) * d2, cy + Math.sin(ang) * d2);
+      ctx.stroke();
+    }
+    // anillo de energía que se expande
+    const rp = (c * 1.2) % 1;
+    ctx.strokeStyle = `rgba(63,140,255,${a * (1 - rp) * 0.7})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, cy, 10 + rp * 40, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawRachaCore(ctx, s, x, y, glow) {
+  const c = s.rachaClock || 0;
+  const cy = y - 2;
+  const pulse = 1 + Math.sin(c * 26) * 0.08;
+  const r = 23 * pulse * (0.55 + 0.45 * glow);
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, glow * 1.15);
+  const g = ctx.createRadialGradient(x, cy, 1, x, cy, r);
+  g.addColorStop(0, "#FFFFFF");
+  g.addColorStop(0.35, "#BFE6FF");
+  g.addColorStop(0.75, "#3F8CFF");
+  g.addColorStop(1, "#1F5FE0");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(x, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#1650C8";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // zarcillos de energía girando alrededor del núcleo
+  ctx.strokeStyle = "rgba(223,242,255,0.85)";
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+  for (let i = 0; i < 3; i++) {
+    const a0 = c * 9 + (i * Math.PI * 2) / 3;
+    ctx.beginPath();
+    ctx.arc(x, cy, r + 4, a0, a0 + 0.9);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Fase (teletransporte): el juego se congela mientras el stickman extiende la mano, abre un portal
+// entre el espacio donde está y el que quiere cruzar, salta hacia él y reaparece del otro lado.
+const FASE_T = 1.3;         // segundos de pausa total
+const FASE_CLOSE_T = 0.4;   // segundos que tardan los portales en cerrarse (el juego ya corre)
+const FASE_DIST = 120;      // distancia del teletransporte
+const FASE_PORTAL_A = 27;   // semieje del portal, perpendicular a la dirección del salto
+const FASE_PORTAL_B = 10;   // semieje del portal, a lo largo de la dirección del salto
+
+const smooth01 = (k) => { const q = Math.max(0, Math.min(1, k)); return q * q * (3 - 2 * q); };
+const seg01 = (p, a, b) => Math.max(0, Math.min(1, (p - a) / (b - a)));
+const easeOutBack = (k) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2); };
+
+// línea de tiempo de la pausa (p = 0..1)
+function faseTimeline(p) {
+  return {
+    arm: smooth01(seg01(p, 0.02, 0.26)) * (1 - smooth01(seg01(p, 0.9, 1))), // mano extendida
+    spark: seg01(p, 0.08, 0.2) * (1 - seg01(p, 0.3, 0.42)),                 // chispa en la punta de los dedos
+    entry: easeOutBack(seg01(p, 0.14, 0.42)),                               // apertura del portal de entrada
+    exit: easeOutBack(seg01(p, 0.28, 0.54)),                                // apertura del portal de salida
+    link: smooth01(seg01(p, 0.3, 0.52)),                                    // eje que une ambos portales
+    crouch: seg01(p, 0.44, 0.52),                                           // agacharse antes de saltar
+    jump: seg01(p, 0.52, 0.8),                                              // salto hacia el portal
+    emerge: seg01(p, 0.8, 1),                                               // sale por el segundo portal
+  };
+}
+
+// Ladrón (robo de vida): si el monstruo toca al stickman queda cortado por la mitad. Al usar la habilidad
+// (o la súper) el juego se pausa: primero las dos mitades se vuelven a unir (si estaba cortado) y, tras una
+// segunda pausa, lanza un gran rayo al monstruo; por medio del rayo le roba la vida y todo vuelve a la normalidad.
+const LADRON_JOIN_T = 1.0;        // pausa 1: las mitades vuelven a unirse (solo si estaba cortado)
+const LADRON_RAY_T = 1.9;         // pausa 2: el rayo (habilidad normal)
+const LADRON_RAY_SUPER_T = 2.3;   // pausa 2: el rayo (súper habilidad)
+const LADRON_CUT_FX_T = 0.95;     // duración del tajo al ser tocado
+const LADRON_GAP = 2.6;           // separación (px) de cada mitad mientras está cortado
+const LADRON_CUT_A = -0.3;        // inclinación de la línea de corte (rad)
+let _cutOff = null;               // canvas auxiliar para partir el cuerpo de cualquier personaje
+
+const easeOutCubic = (k) => 1 - Math.pow(1 - k, 3);
+const hsh = (k) => { const v = Math.sin(k * 12.9898) * 43758.5453; return v - Math.floor(v); };
+
+function ladronPhase(fx, remaining) {
+  const el = Math.max(0, fx.total - remaining);
+  if (el < fx.joinT) return { phase: "join", p: el / fx.joinT, el };
+  return { phase: "ray", p: Math.min(1, (el - fx.joinT) / fx.rayT), el };
+}
+
+// línea de tiempo de la pausa del rayo (p = 0..1)
+function ladronTimeline(p) {
+  return {
+    arm: smooth01(seg01(p, 0.03, 0.22)) * (1 - smooth01(seg01(p, 0.86, 0.99))), // brazo extendido hacia el monstruo
+    charge: seg01(p, 0.05, 0.32),                                                // la energía se acumula en la mano
+    head: easeOutCubic(seg01(p, 0.32, 0.5)),                                     // la punta del rayo viaja hasta el monstruo
+    beam: seg01(p, 0.32, 0.36) * (1 - smooth01(seg01(p, 0.82, 0.95))),           // visibilidad del rayo
+    hit: seg01(p, 0.5, 0.66),                                                    // impacto
+    drain: seg01(p, 0.58, 0.86),                                                 // la vida viaja de vuelta por el rayo
+    land: seg01(p, 0.82, 0.98),                                                  // la vida llega al stickman
+    pan: smooth01(seg01(p, 0.32, 0.5)) * (1 - smooth01(seg01(p, 0.64, 0.9))),   // la cámara acompaña al rayo y vuelve
+  };
+}
+
+function startLadron(s, superMode) {
+  const alive = !s.monsterDefeated && s.monsterLives > 0;
+  if (!alive) {
+    // sin monstruo al que robarle la vida: la súper solo cura (y el stickman se une); la normal no hace nada
+    if (superMode) { s.lives = Math.max(s.lives, 5); s.ladronCut = false; }
+    return;
+  }
+  const wasCut = !!s.ladronCut;
+  const hx = s.player.x, hy = s.player.y - 5;
+  const dx = s.monster.x - hx, dy = s.monster.y - hy;
+  const d = Math.hypot(dx, dy) || 1;
+  const joinT = wasCut ? LADRON_JOIN_T : 0;
+  const rayT = superMode ? LADRON_RAY_SUPER_T : LADRON_RAY_T;
+  s.ladronFx = {
+    superMode, wasCut, joinT, rayT,
+    total: joinT + rayT,
+    applyAt: joinT + rayT * 0.84,
+    dx: dx / d, dy: dy / d,
+    gain: superMode ? Math.max(0, 5 - s.lives) : 1,
+    applied: false,
+  };
+  s.ladronT = joinT + rayT;
+  s.ladronCut = false;
+  s.moving = false;
+  if (superMode) s.superFx = null;
+}
+
+function drawHeartShape(ctx, x, y, size) {
+  ctx.beginPath();
+  ctx.moveTo(x, y + size * 0.9);
+  ctx.bezierCurveTo(x - size * 1.5, y - size * 0.1, x - size * 0.9, y - size * 1.2, x, y - size * 0.45);
+  ctx.bezierCurveTo(x + size * 0.9, y - size * 1.2, x + size * 1.5, y - size * 0.1, x, y + size * 0.9);
+  ctx.closePath();
+}
+
+// Gran rayo naranja con núcleo blanco, borde eléctrico y dos hebras entrelazadas (la energía vital)
+function drawLadronBeam(ctx, x1, y1, x2, y2, W, clock, alpha) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 2 || alpha <= 0.01) return;
+  const nx = -dy / len, ny = dx / len;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, alpha);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  [[W * 2.5, "rgba(255,90,20,0.18)"], [W * 1.7, "rgba(255,140,30,0.32)"], [W * 1.05, "rgba(255,190,70,0.9)"]].forEach(([w, c]) => {
+    ctx.strokeStyle = c;
+    ctx.lineWidth = w;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  });
+  ctx.strokeStyle = "rgba(255,251,235,0.97)";
+  ctx.lineWidth = W * 0.42;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  // borde eléctrico irregular
+  const seg = Math.max(5, Math.floor(len / 12));
+  const seed = Math.floor(clock * 24);
+  ctx.strokeStyle = "rgba(255,232,150,0.85)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let i = 0; i <= seg; i++) {
+    const t = i / seg;
+    const j = i === 0 || i === seg ? 0 : (hsh(i * 3.1 + seed * 7.7) - 0.5) * W * 1.7;
+    const qx = x1 + dx * t + nx * j, qy = y1 + dy * t + ny * j;
+    if (i === 0) ctx.moveTo(qx, qy); else ctx.lineTo(qx, qy);
+  }
+  ctx.stroke();
+  // dos hebras entrelazadas
+  const steps = Math.max(14, Math.floor(len / 5));
+  for (let k = 0; k < 2; k++) {
+    ctx.strokeStyle = k ? "rgba(255,70,30,0.95)" : "rgba(255,160,50,0.95)";
+    ctx.lineWidth = Math.max(1.6, W * 0.26);
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const env = Math.min(1, t * 7, (1 - t) * 7);
+      const off = Math.sin(t * len * 0.15 - clock * 17 + k * Math.PI) * W * 0.95 * env;
+      const qx = x1 + dx * t + nx * off, qy = y1 + dy * t + ny * off;
+      if (i === 0) ctx.moveTo(qx, qy); else ctx.lineTo(qx, qy);
+    }
+    ctx.stroke();
+  }
+  // cabeza del rayo
+  const hg = ctx.createRadialGradient(x2, y2, 0, x2, y2, W * 1.4);
+  hg.addColorStop(0, "rgba(255,255,240,0.95)");
+  hg.addColorStop(1, "rgba(255,150,40,0)");
+  ctx.fillStyle = hg;
+  ctx.beginPath(); ctx.arc(x2, y2, W * 1.4, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawLadronImpact(ctx, x, y, k, sustain, sup, clock) {
+  if (sustain <= 0.02 && k <= 0) return;
+  const sc = sup ? 1.35 : 1;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  const R = (22 + 8 * Math.sin(clock * 30)) * sc;
+  const g = ctx.createRadialGradient(x, y, 0, x, y, R);
+  g.addColorStop(0, `rgba(255,220,140,${0.75 * sustain})`);
+  g.addColorStop(1, "rgba(255,110,20,0)");
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.lineCap = "round";
+  for (let r = 0; r < 2; r++) {
+    const kk = Math.max(0, Math.min(1, k * 1.25 - r * 0.25));
+    if (kk <= 0 || kk >= 1) continue;
+    ctx.strokeStyle = `rgba(255,${150 + r * 50},50,${0.85 * (1 - kk)})`;
+    ctx.lineWidth = 3 - r;
+    ctx.beginPath(); ctx.arc(x, y, (10 + 50 * kk) * sc, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 12; i++) {
+    const ang = i * 0.5236 + Math.sin(clock * 20 + i) * 0.15;
+    const ph = (clock * 3.1 + i * 0.37) % 1;
+    const d1 = (12 + ph * 30) * sc, d2 = d1 + (6 + (i % 3) * 3) * sc * (1 - ph);
+    ctx.strokeStyle = `rgba(255,${190 + (i % 3) * 20},80,${0.9 * sustain * (1 - ph)})`;
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(ang) * d1, y + Math.sin(ang) * d1);
+    ctx.lineTo(x + Math.cos(ang) * d2, y + Math.sin(ang) * d2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function faseSpotFree(x, y, walls, spikes) {
+  const r = PLAYER_R + 2;
+  for (const wl of walls) {
+    const cx = Math.max(wl.x, Math.min(x, wl.x + wl.w));
+    const cy = Math.max(wl.y, Math.min(y, wl.y + wl.h));
+    if (Math.hypot(x - cx, y - cy) < r) return false;
+  }
+  const pRect = { x: x - PLAYER_R, y: y - PLAYER_R, w: PLAYER_R * 2, h: PLAYER_R * 2 };
+  return !spikes.some((sp) => rectsOverlap(pRect, sp));
+}
+
+// punto de llegada: ~120px hacia adelante; si cae dentro de una pared o pinchos, busca el sitio libre más cercano
+function faseLanding(player, facing, walls, spikes) {
+  const clampX = (v) => Math.max(PLAYER_R, Math.min(WORLD_W - PLAYER_R, v));
+  const clampY = (v) => Math.max(PLAYER_R, Math.min(WORLD_H - PLAYER_R, v));
+  // primero hacia adelante (para quedar del otro lado de una pared), después hacia atrás
+  const offsets = [];
+  for (let o = 0; o <= 100; o += 8) offsets.push(o);
+  for (let o = -8; o >= -80; o -= 8) offsets.push(o);
+  for (const o of offsets) {
+    const d = FASE_DIST + o;
+    const x = clampX(player.x + facing.x * d), y = clampY(player.y + facing.y * d);
+    if (Math.hypot(x - player.x, y - player.y) < 30) continue;
+    if (faseSpotFree(x, y, walls, spikes)) return { x, y };
+  }
+  return { x: clampX(player.x + facing.x * FASE_DIST), y: clampY(player.y + facing.y * FASE_DIST) };
+}
+
+// Portal azul: par de anillos vistos de canto (el eje corto apunta en la dirección del salto)
+function drawFasePortal(ctx, x, y, dx, dy, open, clock, alpha) {
+  if (open <= 0.01 || alpha <= 0.01) return;
+  const rx = FASE_PORTAL_B * open, ry = FASE_PORTAL_A * open;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, alpha);
+  ctx.translate(x, y);
+  ctx.rotate(Math.atan2(dy, dx));
+  // resplandor exterior
+  ctx.save();
+  ctx.scale(0.6, 1);
+  const R = ry * 1.9;
+  const halo = ctx.createRadialGradient(0, 0, ry * 0.5, 0, 0, R);
+  halo.addColorStop(0, "rgba(80,160,255,0.55)");
+  halo.addColorStop(1, "rgba(40,110,255,0)");
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(0, 0, R, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  // interior del portal
+  ctx.save();
+  ctx.scale(rx / ry, 1);
+  const disc = ctx.createRadialGradient(0, 0, 0, 0, 0, ry);
+  disc.addColorStop(0, "#04122E");
+  disc.addColorStop(0.65, "#0B2A6B");
+  disc.addColorStop(1, "#2F7BFF");
+  ctx.fillStyle = disc;
+  ctx.beginPath();
+  ctx.arc(0, 0, ry, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  // remolino
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "rgba(170,220,255,0.75)";
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 3; i++) {
+    const a0 = clock * 5 + i * 2.09;
+    const k = 0.42 + 0.16 * i;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, rx * k, ry * k, 0, a0, a0 + 1.4);
+    ctx.stroke();
+  }
+  // anillo exterior, anillo interior y onda que se expande
+  ctx.strokeStyle = "#2F7BFF";
+  ctx.lineWidth = 3.2;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = "#BFE6FF";
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx * 0.78, ry * 0.78, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  const ph = (clock * 1.4) % 1;
+  ctx.strokeStyle = `rgba(120,190,255,${0.5 * (1 - ph)})`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx * (1.1 + ph * 0.4), ry * (1.1 + ph * 0.4), 0, 0, Math.PI * 2);
+  ctx.stroke();
+  // chispas orbitando
+  ctx.fillStyle = "#FFFFFF";
+  for (let i = 0; i < 6; i++) {
+    const a = clock * 3 + i * 1.047;
+    ctx.globalAlpha = Math.min(1, alpha) * (0.5 + 0.5 * Math.sin(clock * 9 + i * 2));
+    ctx.beginPath();
+    ctx.arc(Math.cos(a) * rx * 1.05, Math.sin(a) * ry * 1.05, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// eje/barra que une los dos portales (crece desde la entrada hacia la salida)
+function drawFaseLink(ctx, x1, y1, x2, y2, k, clock, alpha) {
+  if (k <= 0.01 || alpha <= 0.01) return;
+  const ex = x1 + (x2 - x1) * k, ey = y1 + (y2 - y1) * k;
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.strokeStyle = `rgba(40,120,255,${0.28 * alpha})`;
+  ctx.lineWidth = 9;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(ex, ey); ctx.stroke();
+  ctx.strokeStyle = `rgba(190,230,255,${0.9 * alpha})`;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 6]);
+  ctx.lineDashOffset = -clock * 70;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(ex, ey); ctx.stroke();
+  ctx.restore();
+}
+
+// destello al entrar / salir del portal
+function drawFaseFlash(ctx, x, y, k) {
+  if (k <= 0 || k >= 1) return;
+  ctx.save();
+  const R = 12 + 34 * k;
+  const g = ctx.createRadialGradient(x, y, 1, x, y, R);
+  g.addColorStop(0, `rgba(255,255,255,${0.9 * (1 - k)})`);
+  g.addColorStop(0.5, `rgba(120,190,255,${0.6 * (1 - k)})`);
+  g.addColorStop(1, "rgba(40,110,255,0)");
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
 
 function mulberry32(seed) {
   return function () {
@@ -471,6 +886,11 @@ function freshState(levelIdx, playerColor, characterKind) {
     lives: 3,
     invuln: 1.2,
     dashT: 0,
+    rachaChargeT: 0,
+    rachaDur: 0,
+    rachaClock: 0,
+    rachaReveal: 0,
+    rachaTrail: [],
     cd: 0,
     cd2: 0,
     activeEffectT: 0,
@@ -481,7 +901,10 @@ function freshState(levelIdx, playerColor, characterKind) {
     spark: null,
     clonePos: null,
     cloneVanish: null,
-    teleportFx: null,
+    faseT: 0,
+    faseFx: null,
+    faseArm: 0,
+    portalFx: null,
     teleportGrace: 0,
     stunT: 0,
     danceT: 0,
@@ -500,6 +923,14 @@ function freshState(levelIdx, playerColor, characterKind) {
     monsterDefeated: false,
     defeatFx: null,
     stealFx: null,
+    ladronT: 0,
+    ladronFx: null,
+    ladronCut: false,
+    cutFx: null,
+    cutGap: 0,
+    cutGlow: 0,
+    armDir: null,
+    armColor: null,
     sierraHitApplied: false,
     vientoAura: null,
     cloneMonsters: [],
@@ -821,12 +1252,25 @@ function ChaseGame({
         const availH = el.clientHeight;
         if (availW <= 0 || availH <= 0) return;
 
+        // Reservamos una franja fija a cada costado para el joystick y el
+        // botón de habilidad, así quedan en el espacio sobrante y no encima
+        // del mapa. En pantallas angostas, si no entra bien, la achicamos
+        // para no comernos demasiado mapa (nunca baja de MIN_ZONE).
+        const WANT_ZONE = 130;
+        const MIN_ZONE = 90;
+        const MIN_CONTENT_W = 320;
+        let sideZone = WANT_ZONE;
+        if (availW - sideZone * 2 < MIN_CONTENT_W) {
+          sideZone = Math.max(MIN_ZONE, (availW - MIN_CONTENT_W) / 2);
+        }
+        sideZone = Math.max(0, sideZone);
+
         // El marco tiene un borde de 2px por lado ("border-2"): el canvas
         // vive en el área DENTRO de ese borde, así que la proporción hay que
         // calcularla sobre esa área real, no sobre el tamaño exterior del
         // marco — si no, queda un desajuste mínimo pero real.
         const BORDER = 4;
-        const contentW = Math.max(1, availW - BORDER);
+        const contentW = Math.max(1, availW - sideZone * 2 - BORDER);
         const contentH = Math.max(1, availH - BORDER);
 
         const exactRatio = contentW / contentH;
@@ -842,24 +1286,24 @@ function ChaseGame({
           canvasRef.current.width = newViewW;
         }
 
-        // Caso normal: la proporción del canvas ya coincide exacto con la
-        // pantalla disponible → llenamos el 100%, sin distorsión posible.
-        // Caso extremo (proporción de pantalla rarísima, fuera del límite de
-        // seguridad de arriba): en vez de forzar el llenado y arriesgar
-        // deformar el dibujo, mantenemos la proporción real y dejamos un
-        // margen mínimo — nunca se estira.
+        // Caso normal: la proporción del canvas ya coincide exacto con el
+        // espacio disponible (descontadas las franjas) → sin distorsión.
+        // Caso extremo (proporción rarísima, fuera del límite de seguridad
+        // de arriba): en vez de forzar el llenado y arriesgar deformar el
+        // dibujo, mantenemos la proporción real y dejamos margen de más.
+        const availWForFrame = availW - sideZone * 2;
         let w, h;
         if (!clamped) {
-          w = availW;
+          w = availWForFrame;
           h = availH;
         } else {
           const ratio = newViewW / VIEW_H;
-          w = Math.min(availW, availH * ratio);
+          w = Math.min(availWForFrame, availH * ratio);
           h = w / ratio;
         }
         w = Math.floor(w);
         h = Math.floor(h);
-        setFrameSize((prev) => (prev && prev.w === w && prev.h === h && prev.viewW === newViewW ? prev : { w, h, viewW: newViewW }));
+        setFrameSize((prev) => (prev && prev.w === w && prev.h === h && prev.viewW === newViewW && prev.sideZone === sideZone ? prev : { w, h, viewW: newViewW, sideZone }));
       });
     };
 
@@ -1053,9 +1497,58 @@ function ChaseGame({
       const dt = Math.min((t - last) / 1000, 0.05);
       last = t;
       const s = state.current;
-      s.time += dt;
+      s.rachaClock = (s.rachaClock || 0) + dt;
+      // Racha: mientras el stickman se transforma en energía, TODO el juego queda congelado
+      const rachaFrozen = s.status === "playing" && s.rachaChargeT > 0;
+      // Fase: mientras el stickman abre el portal y salta, TODO el juego queda congelado
+      const faseFrozen = s.status === "playing" && s.faseT > 0;
+      // Ladrón: mientras el stickman se une y lanza el rayo, TODO el juego queda congelado
+      const ladronFrozen = s.status === "playing" && s.ladronT > 0;
+      if (rachaFrozen) {
+        s.rachaChargeT -= dt;
+        if (s.rachaChargeT <= 0) {
+          s.rachaChargeT = 0;
+          s.dashT = s.rachaDur; // termina la transformación: empieza la súper velocidad
+        }
+      } else if (faseFrozen) {
+        s.faseT -= dt;
+        if (s.faseT <= 0) {
+          // termina el salto: reaparece del otro lado y todo vuelve a la normalidad
+          const fz = s.faseFx;
+          s.faseT = 0;
+          s.faseFx = null;
+          if (fz) {
+            s.player.x = fz.toX;
+            s.player.y = fz.toY;
+            s.teleportGrace = 0.3;
+            s.portalFx = { ...fz, t: FASE_CLOSE_T };
+          }
+        }
+      } else if (ladronFrozen) {
+        s.ladronT -= dt;
+        const lf = s.ladronFx;
+        if (lf) {
+          const elapsed = lf.total - s.ladronT;
+          if (!lf.applied && elapsed >= lf.applyAt) {
+            // el rayo entrega la vida robada
+            lf.applied = true;
+            if (lf.superMode) s.lives = Math.max(s.lives, 5);
+            else if (!s.monsterDefeated && s.monsterLives > 0) { s.lives += 1; damageMonster(s); }
+            setHud({ lives: s.lives, cd: Math.max(0, s.cd), status: s.status, level: s.level, monsterLives: s.monsterLives, monsterDefeated: s.monsterDefeated, energy: s.energy });
+          }
+        }
+        if (s.ladronT <= 0) {
+          s.ladronT = 0;
+          s.ladronFx = null;
+          s.faseArm = 0;
+          s.armDir = null;
+          s.armColor = null;
+        }
+      } else {
+        s.time += dt;
+      }
 
-      if (s.status === "playing") {
+      if (s.status === "playing" && !rachaFrozen && !faseFrozen && !ladronFrozen) {
         const ab = ABILITIES[ability];
         if (s.cd > 0) s.cd -= dt;
         if (s.invuln > 0) s.invuln -= dt;
@@ -1087,8 +1580,8 @@ function ChaseGame({
           s.cd = ab.cd;
           s.energy -= 50;
           if (ability === "viento") {
-            s.dashT = ab.dur;
-            s.vientoAura = { x: s.player.x, y: s.player.y, t: 0.5 };
+            s.rachaChargeT = RACHA_CHARGE_T;
+            s.rachaDur = ab.dur;
           }
           if (ability === "sigilo") { s.activeEffectT = ab.dur; s.activeEffectAbility = "sigilo"; }
           if (ability === "fuego") { s.activeEffectT = ab.dur; s.activeEffectAbility = "fuego"; }
@@ -1105,15 +1598,22 @@ function ChaseGame({
             s.clonePos = { x: s.player.x, y: s.player.y };
           }
           if (ability === "fase") {
-            const dist = 120;
-            let nx = s.player.x + s.facing.x * dist;
-            let ny = s.player.y + s.facing.y * dist;
-            nx = Math.max(PLAYER_R, Math.min(WORLD_W - PLAYER_R, nx));
-            ny = Math.max(PLAYER_R, Math.min(WORLD_H - PLAYER_R, ny));
-            s.teleportFx = { fromX: s.player.x, fromY: s.player.y, toX: nx, toY: ny, t: 0.4 };
-            s.player.x = nx;
-            s.player.y = ny;
-            s.teleportGrace = 0.3;
+            // el juego se pausa: el stickman extiende la mano, abre un portal hacia el otro lado, salta y reaparece
+            const wallsNow = s.levelWalls.filter((_, i) => !s.destroyedWalls.has(i));
+            const land = faseLanding(s.player, s.facing, wallsNow, s.levelSpikes);
+            const travel = Math.hypot(land.x - s.player.x, land.y - s.player.y);
+            const fl = Math.hypot(s.facing.x, s.facing.y) || 1;
+            const ux = s.facing.x / fl, uy = s.facing.y / fl;
+            const ed = Math.min(34, travel * 0.45); // el portal de entrada se abre justo delante de la mano
+            s.faseFx = {
+              dx: ux, dy: uy,
+              fromX: s.player.x, fromY: s.player.y,
+              ex: s.player.x + ux * ed, ey: s.player.y - 3 + uy * ed, // centro del portal de entrada
+              toX: land.x, toY: land.y,
+              xx: land.x, xy: land.y - 3,                              // centro del portal de salida
+            };
+            s.faseT = FASE_T;
+            s.moving = false;
           }
           if (ability === "tornado") {
             s.tornadoT = ab.dur;
@@ -1125,10 +1625,11 @@ function ChaseGame({
               t: 0,
             };
           }
-          if (ability === "electrico" || ability === "mutar" || ability === "roquero" || ability === "ladron") {
+          if (ability === "ladron") startLadron(s, false);
+          if (ability === "electrico" || ability === "mutar" || ability === "roquero") {
             const dx0 = s.monster.x - s.player.x, dy0 = s.monster.y - s.player.y;
             const d0 = Math.hypot(dx0, dy0) || 1;
-            const speed = ability === "electrico" ? 560 : ability === "roquero" ? 420 : ability === "ladron" ? 480 : 320;
+            const speed = ability === "electrico" ? 560 : ability === "roquero" ? 420 : 320;
             s.projectile = {
               x: s.player.x,
               y: s.player.y,
@@ -1168,8 +1669,8 @@ function ChaseGame({
           s.cd2 = ab2.cd;
           s.energy -= 50;
           if (secondaryAbility === "viento") {
-            s.dashT = ab2.dur;
-            s.vientoAura = { x: s.player.x, y: s.player.y, t: 0.5 };
+            s.rachaChargeT = RACHA_CHARGE_T;
+            s.rachaDur = ab2.dur;
           } else if (secondaryAbility === "fuego") {
             s.activeEffectT = ab2.dur;
             s.activeEffectAbility = "fuego";
@@ -1203,7 +1704,11 @@ function ChaseGame({
           }
         }
         if (s.cd2 > 0) s.cd2 -= dt;
-        if (s.dashT > 0) s.dashT -= dt;
+        if (s.dashT > 0) {
+          s.dashT -= dt;
+          if (s.dashT <= 0) { s.dashT = 0; s.rachaReveal = RACHA_REVEAL_T; }
+        }
+        if (s.rachaReveal > 0) s.rachaReveal -= dt;
         if (s.vientoAura) {
           s.vientoAura.t -= dt;
           if (s.vientoAura.t <= 0) s.vientoAura = null;
@@ -1247,9 +1752,9 @@ function ChaseGame({
           s.wallBreakFx.t -= dt;
           if (s.wallBreakFx.t <= 0) s.wallBreakFx = null;
         }
-        if (s.teleportFx) {
-          s.teleportFx.t -= dt;
-          if (s.teleportFx.t <= 0) s.teleportFx = null;
+        if (s.portalFx) {
+          s.portalFx.t -= dt;
+          if (s.portalFx.t <= 0) s.portalFx = null;
         }
         if (s.activeEffectAbility !== "clon" || s.activeEffectT <= 0) s.clonePos = null;
         const activeWalls = s.levelWalls.filter((_, i) => !s.destroyedWalls.has(i));
@@ -1341,7 +1846,7 @@ function ChaseGame({
               t: 0,
             }));
           } else if (targetId === "ladron") {
-            s.lives = 5;
+            startLadron(s, true);
           }
         };
 
@@ -1569,12 +2074,6 @@ function ChaseGame({
               if (s.danceT <= 0) damageMonster(s);
               s.danceT = Math.max(s.danceT, ABILITIES.roquero.dur);
               s.notesFx = { x: p.x, y: p.y, t: 0.6 };
-            } else if (p.kind === "ladron") {
-              if (s.monsterLives > 0) {
-                s.lives += 1;
-                s.stealFx = { x: p.x, y: p.y, t: 0.6 };
-                damageMonster(s);
-              }
             } else {
               if (s.stunT <= 0) damageMonster(s);
               const paralyzeFor = p.kind === "electrico" ? 2.6 : 2.9;
@@ -1593,6 +2092,10 @@ function ChaseGame({
         if (s.stealFx) {
           s.stealFx.t -= dt;
           if (s.stealFx.t <= 0) s.stealFx = null;
+        }
+        if (s.cutFx) {
+          s.cutFx.t -= dt;
+          if (s.cutFx.t <= 0) s.cutFx = null;
         }
         if (s.defeatFx) {
           s.defeatFx.t -= dt;
@@ -1842,6 +2345,13 @@ function ChaseGame({
           activeWalls.forEach((wl) => circleRectPush(s.player, PLAYER_R, wl));
         }
 
+        // estela de energía de Racha
+        if (s.rachaTrail) {
+          s.rachaTrail.forEach((pt) => (pt.age += dt));
+          if (s.dashT > 0) s.rachaTrail.push({ x: s.player.x, y: s.player.y - 2, age: 0 });
+          while (s.rachaTrail.length && s.rachaTrail[0].age > RACHA_TRAIL_LIFE) s.rachaTrail.shift();
+        }
+
         // spikes hazard
         if (s.invuln <= 0 && !shieldActive) {
           const pRect = { x: s.player.x - PLAYER_R, y: s.player.y - PLAYER_R, w: PLAYER_R * 2, h: PLAYER_R * 2 };
@@ -1980,6 +2490,11 @@ function ChaseGame({
             s.clonePos = null;
             s.invuln = 1.4;
           } else {
+            if (ability === "ladron") {
+              // el monstruo lo toca: queda cortado por la mitad hasta que use el robo
+              s.ladronCut = true;
+              s.cutFx = { x: s.player.x, y: s.player.y, t: LADRON_CUT_FX_T, fx: s.facing.x, fy: s.facing.y, moving: !!s.moving };
+            }
             s.lives -= 1;
             s.invuln = 1.6;
             s.player = { ...s.startPos };
@@ -2006,6 +2521,9 @@ function ChaseGame({
   }, [ability, secondaryAbility]);
 
   function draw(ctx, s, abilityId) {
+    // Ladrón: mientras esté cortado se dibuja partido en dos (salvo al ganar)
+    s.cutGap = s.ladronCut && s.status !== "won" ? LADRON_GAP : 0;
+    s.cutGlow = s.cutGap > 0 ? 0.4 : 0;
     const jungle = s.levelTheme === "jungle";
     const snow = s.levelTheme === "snow";
     const mountain = s.levelTheme === "mountain";
@@ -2036,9 +2554,62 @@ function ChaseGame({
     }
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
-    const camX = Math.max(0, Math.min(s.player.x - VIEW_W / 2, WORLD_W - VIEW_W));
+    const camFor = (wx) => Math.max(0, Math.min(wx - VIEW_W / 2, WORLD_W - VIEW_W));
+    let camX = camFor(s.player.x);
+    // Fase: la cámara se desliza hacia el lugar de llegada para que al reanudar no haya salto
+    const faseOn = s.faseT > 0 && !!s.faseFx;
+    const faseP = faseOn ? 1 - s.faseT / FASE_T : 0;
+    if (faseOn) camX += (camFor(s.faseFx.toX) - camX) * smooth01(seg01(faseP, 0.4, 0.85));
+    // Ladrón: durante el rayo la cámara acompaña a la energía hacia el monstruo y vuelve al stickman
+    const ladOn = s.ladronT > 0 && !!s.ladronFx;
+    const ladInfo = ladOn ? ladronPhase(s.ladronFx, s.ladronT) : null;
+    const ladRay = ladOn && ladInfo.phase === "ray";
+    if (ladRay) {
+      const ltl = ladronTimeline(ladInfo.p);
+      const ldist = Math.abs(s.monster.x - s.player.x);
+      const panMax = ldist < VIEW_W * 0.55 ? 0.5 : 1;
+      camX = camFor(s.player.x + (s.monster.x - s.player.x) * ltl.pan * panMax);
+    }
 
     ctx.save();
+    // Fase: acercamiento suave a los dos portales durante la pausa
+    if (faseOn) {
+      const fzk = smooth01(seg01(faseP, 0, 0.2)) * (1 - smooth01(seg01(faseP, 0.85, 1)));
+      const fz = s.faseFx;
+      const pvx = (fz.ex + fz.xx) / 2 - camX, pvy = (fz.ey + fz.xy) / 2;
+      let zz = 1 + 0.3 * fzk;
+      // que el acercamiento nunca deje al stickman ni a los portales fuera de la pantalla (cerca del borde del mapa)
+      const zTop = Math.min(fz.ey, fz.xy, fz.fromY - 3) - 30, zBot = Math.max(fz.ey, fz.xy, fz.fromY - 3) + 30;
+      if (zTop < pvy) zz = Math.min(zz, Math.max(1, (pvy - 4) / (pvy - zTop)));
+      if (zBot > pvy) zz = Math.min(zz, Math.max(1, (VIEW_H - 4 - pvy) / (zBot - pvy)));
+      ctx.translate(pvx, pvy);
+      ctx.scale(zz, zz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Racha: pequeño acercamiento al stickman durante la pausa
+    if (s.rachaChargeT > 0) {
+      const pz = 1 - s.rachaChargeT / RACHA_CHARGE_T;
+      const kz = pz < 0.6 ? pz / 0.6 : 1 - (pz - 0.6) / 0.4;
+      const rz = 1 + 0.28 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(rz, rz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Ladrón: acercamiento al stickman (unión) y al cargar el rayo
+    if (ladOn) {
+      let lz = 1;
+      if (ladInfo.phase === "join") {
+        lz = 1 + 0.42 * smooth01(seg01(ladInfo.p, 0, 0.22)) * (1 - 0.4 * smooth01(seg01(ladInfo.p, 0.8, 1)));
+      } else {
+        const lead = s.ladronFx.wasCut ? 1 : smooth01(seg01(ladInfo.p, 0, 0.12));
+        lz = 1 + 0.25 * lead * (1 - smooth01(seg01(ladInfo.p, 0.26, 0.5)));
+      }
+      const lvx = s.player.x - camX, lvy = s.player.y;
+      ctx.translate(lvx, lvy);
+      ctx.scale(lz, lz);
+      ctx.translate(-lvx, -lvy);
+    }
     ctx.translate(-camX, 0);
 
     if (jungle) {
@@ -2933,8 +3504,20 @@ function ChaseGame({
       ctx.globalAlpha = 1;
     }
 
-    // player
-    drawPlayer(ctx, s, abilityId);
+    // portales de Fase cerrándose (el juego ya corrió de nuevo; el stickman queda delante)
+    if (s.portalFx) {
+      const pf = s.portalFx;
+      const kc = Math.max(0, pf.t / FASE_CLOSE_T);
+      const oc = kc * kc;
+      drawFaseLink(ctx, pf.ex, pf.ey, pf.xx, pf.xy, 1, s.rachaClock || 0, kc);
+      drawFasePortal(ctx, pf.xx, pf.xy, pf.dx, pf.dy, oc, s.rachaClock || 0, kc);
+      drawFasePortal(ctx, pf.ex, pf.ey, pf.dx, pf.dy, oc, s.rachaClock || 0, kc);
+    }
+
+    // player (durante la carga de Racha y la pausa de Fase se dibuja al final, encima del oscurecido)
+    if (!(s.rachaChargeT > 0) && !(s.faseT > 0) && !(s.ladronT > 0)) drawPlayer(ctx, s, abilityId);
+    // Ladrón: el tajo donde el monstruo lo tocó (las dos mitades se separan y caen)
+    if (s.cutFx) drawCutGhost(ctx, s, abilityId);
 
     // charging ring while holding the ability button toward a super
     if (s.chargeT > 0 && s.chargeT < SUPER_HOLD) {
@@ -3051,7 +3634,7 @@ function ChaseGame({
     const dancing = s.danceT > 0;
     const R = MONSTER_R;
 
-    if (!s.monsterDefeated) {
+    if (!s.monsterDefeated && !ladRay) {
       drawMonsterBody(ctx, s, abilityId, {
         x: s.monster.x,
         y: s.monster.y,
@@ -3148,26 +3731,96 @@ function ChaseGame({
       ctx.stroke();
     }
 
-    if (s.teleportFx) {
-      const fx = s.teleportFx;
-      ctx.strokeStyle = ABILITIES.fase.accent;
-      ctx.globalAlpha = Math.max(0, fx.t / 0.4) * 0.7;
-      ctx.setLineDash([5, 5]);
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(fx.fromX, fx.fromY);
-      ctx.lineTo(fx.toX, fx.toY);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      [{ x: fx.fromX, y: fx.fromY }, { x: fx.toX, y: fx.toY }].forEach((p) => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 10 * (1 - fx.t / 0.4), 0, Math.PI * 2);
-        ctx.stroke();
-      });
-      ctx.globalAlpha = 1;
+    // Racha: escena oscurecida y luz solo sobre el stickman mientras el juego está en pausa
+    if (s.rachaChargeT > 0) {
+      const pd = 1 - s.rachaChargeT / RACHA_CHARGE_T;
+      const dimK = pd < 0.12 ? pd / 0.12 : pd > 0.85 ? Math.max(0, (1 - pd) / 0.15) : 1;
+      const px = s.player.x, py = s.player.y;
+      const vg = ctx.createRadialGradient(px, py, 30, px, py, 260);
+      vg.addColorStop(0, `rgba(4,12,36,${0.25 * dimK})`);
+      vg.addColorStop(1, `rgba(4,12,36,${0.78 * dimK})`);
+      ctx.fillStyle = vg;
+      ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+      drawPlayer(ctx, s, abilityId);
     }
 
+    // Fase: escena oscurecida, mano extendida, portal, salto y reaparición
+    if (faseOn) drawFaseScene(ctx, s, abilityId, camX, faseP);
+
+    // Ladrón: unión de las dos mitades y rayo al monstruo (juego en pausa)
+    if (ladOn) drawLadronScene(ctx, s, abilityId, camX, ladInfo);
+
     ctx.restore();
+  }
+
+  // Dibuja el cuerpo (cualquier personaje) con una transformación: ancla (ox,oy) -> (px,py), escala sc*(sx,sy)
+  function drawBodyXf(ctx, s, abilityId, ox, oy, px, py, sc, sx, sy) {
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.scale(sc * sx, sc * sy);
+    ctx.translate(-ox, -oy);
+    drawPlayerBody(ctx, s, abilityId);
+    ctx.restore();
+  }
+
+  function drawFaseScene(ctx, s, abilityId, camX, p) {
+    const fz = s.faseFx;
+    if (!fz) return;
+    const tl = faseTimeline(p);
+    const clock = s.rachaClock || 0;
+    const ox = fz.fromX, oy = fz.fromY;
+
+    // escena oscurecida, con la luz sobre los dos portales
+    const dimK = p < 0.12 ? p / 0.12 : p > 0.88 ? Math.max(0, (1 - p) / 0.12) : 1;
+    const mx = (fz.ex + fz.xx) / 2, my = (fz.ey + fz.xy) / 2;
+    const vg = ctx.createRadialGradient(mx, my, 40, mx, my, 300);
+    vg.addColorStop(0, `rgba(3,14,40,${0.2 * dimK})`);
+    vg.addColorStop(1, `rgba(3,14,40,${0.78 * dimK})`);
+    ctx.fillStyle = vg;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // chispa en la punta de los dedos justo antes de que se abra el portal
+    if (tl.spark > 0.01) {
+      const hx = ox + fz.dx * 20, hy = oy - 5 + fz.dy * 20;
+      const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, 4 + 9 * tl.spark);
+      g.addColorStop(0, `rgba(255,255,255,${tl.spark})`);
+      g.addColorStop(1, "rgba(60,140,255,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(hx, hy, 4 + 9 * tl.spark, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // eje + portales
+    drawFaseLink(ctx, fz.ex, fz.ey, fz.xx, fz.xy, tl.link, clock, 1);
+    drawFasePortal(ctx, fz.xx, fz.xy, fz.dx, fz.dy, tl.exit, clock, 1);
+    drawFasePortal(ctx, fz.ex, fz.ey, fz.dx, fz.dy, tl.entry, clock, 1);
+
+    // stickman: mano extendida -> se agacha -> salta al portal -> sale por el segundo
+    s.faseArm = tl.arm;
+    const cy0 = oy - 3; // centro del cuerpo
+    if (p < 0.8) {
+      if (tl.jump <= 0) {
+        // de pie (o agachándose un poco) mirando al portal
+        const cr = Math.sin(tl.crouch * Math.PI * 0.5);
+        const feetY = oy + 15;
+        drawBodyXf(ctx, s, abilityId, ox, feetY, ox, feetY, 1, 1 + 0.06 * cr, 1 - 0.14 * cr);
+      } else {
+        const u = tl.jump;
+        const px = ox + (fz.ex - ox) * u;
+        const py = cy0 + (fz.ey - cy0) * u - Math.sin(u * Math.PI) * 18;
+        const sc = 1 - 0.68 * u * u;
+        drawBodyXf(ctx, s, abilityId, ox, cy0, px, py, sc, 1, 1);
+      }
+    } else {
+      const v = tl.emerge;
+      const sc = 0.3 + 0.7 * easeOutBack(seg01(v, 0, 0.75));
+      const py = fz.xy - Math.sin(v * Math.PI) * 8;
+      drawBodyXf(ctx, s, abilityId, ox, cy0, fz.xx, py, sc, 1, 1);
+    }
+    s.faseArm = 0;
+
+    // destellos: al entrar y al salir
+    drawFaseFlash(ctx, fz.ex, fz.ey, seg01(p, 0.76, 0.92));
+    drawFaseFlash(ctx, fz.xx, fz.xy, seg01(p, 0.8, 0.96));
   }
 
   function drawMonsterBody(ctx, s, abilityId, o) {
@@ -3289,7 +3942,398 @@ function ChaseGame({
     ctx.restore();
   }
 
+  // Cuerpo del personaje: si está cortado (Ladrón) se dibuja partido en dos
+  function drawPlayerBody(ctx, s, abilityId) {
+    if ((s.cutGap || 0) > 0.05) {
+      drawSplitBody(ctx, s, abilityId, { gap: s.cutGap, glow: s.cutGlow || 0 });
+      return;
+    }
+    drawPlayerBodyRaw(ctx, s, abilityId);
+  }
+
+  // Parte el cuerpo (cualquier personaje) por una línea diagonal a la altura de la cintura.
+  // o = { gap, glow, slide?, upX?, upY?, upR?, upA?, loX?, loY?, loR?, loA? }
+  function drawSplitBody(ctx, s, abilityId, o) {
+    const x = s.player.x, y = s.player.y, cy0 = y - 2;
+    if (!_cutOff) {
+      _cutOff = document.createElement("canvas");
+      _cutOff.width = 480;
+      _cutOff.height = 480;
+    }
+    const octx = _cutOff.getContext("2d");
+    octx.setTransform(1, 0, 0, 1, 0, 0);
+    octx.clearRect(0, 0, 480, 480);
+    octx.setTransform(2, 0, 0, 2, (120 - x) * 2, (120 - y) * 2);
+    drawPlayerBodyRaw(octx, s, abilityId);
+    octx.setTransform(1, 0, 0, 1, 0, 0);
+
+    const ux = Math.cos(LADRON_CUT_A), uy = Math.sin(LADRON_CUT_A);
+    const nx = Math.sin(LADRON_CUT_A), ny = -Math.cos(LADRON_CUT_A); // normal hacia arriba
+    const g = o.gap || 0;
+    const sl = o.slide ?? g * 0.55;
+    const glow = o.glow || 0;
+    const clock = s.rachaClock || 0;
+    const rot = 0.05 * Math.min(1.6, g / LADRON_GAP);
+
+    // resplandor de energía entre las dos mitades
+    if (glow > 0.02) {
+      const gr = ctx.createRadialGradient(x, cy0, 1, x, cy0, 15 + g * 1.5);
+      gr.addColorStop(0, `rgba(255,214,120,${0.55 * glow})`);
+      gr.addColorStop(1, "rgba(255,150,30,0)");
+      ctx.fillStyle = gr;
+      ctx.beginPath(); ctx.arc(x, cy0, 15 + g * 1.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    const half = (dir, ox, oy, r, alpha) => {
+      if (alpha <= 0.01) return;
+      ctx.save();
+      ctx.globalAlpha *= alpha;
+      ctx.translate(x + ox, cy0 + oy);
+      ctx.rotate(r);
+      ctx.translate(-x, -cy0);
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x - ux * 90, cy0 - uy * 90);
+      ctx.lineTo(x + ux * 90, cy0 + uy * 90);
+      ctx.lineTo(x + ux * 90, cy0 + uy * 90 + dir * 130);
+      ctx.lineTo(x - ux * 90, cy0 - uy * 90 + dir * 130);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(_cutOff, x - 120, y - 120, 240, 240);
+      ctx.restore();
+      // filo brillante del corte
+      ctx.lineCap = "round";
+      ctx.strokeStyle = `rgba(255,190,70,${0.25 * glow})`;
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(x - ux * 8, cy0 - uy * 8); ctx.lineTo(x + ux * 8, cy0 + uy * 8); ctx.stroke();
+      ctx.strokeStyle = `rgba(255,214,110,${Math.min(1, 0.55 + 0.45 * glow)})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x - ux * 8, cy0 - uy * 8); ctx.lineTo(x + ux * 8, cy0 + uy * 8); ctx.stroke();
+      ctx.restore();
+    };
+    half(1, -nx * g - ux * sl + (o.loX || 0), -ny * g - uy * sl + (o.loY || 0) + Math.sin(clock * 4 + 2) * 0.5, o.loR ?? rot, o.loA ?? 1);
+    half(-1, nx * g + ux * sl + (o.upX || 0), ny * g + uy * sl + (o.upY || 0) + Math.sin(clock * 4) * 0.5, o.upR ?? -rot, o.upA ?? 1);
+  }
+
+  // El tajo en el lugar donde el monstruo tocó al stickman: las dos mitades se separan, caen y se desvanecen
+  function drawCutGhost(ctx, s, abilityId) {
+    const f = s.cutFx;
+    if (!f) return;
+    const u = 1 - f.t / LADRON_CUT_FX_T;
+    const cy0 = f.y - 2;
+    const ux = Math.cos(LADRON_CUT_A), uy = Math.sin(LADRON_CUT_A);
+    const gs = { ...s, player: { x: f.x, y: f.y }, facing: { x: f.fx, y: f.fy }, moving: f.moving, invuln: 0, faseArm: 0, cutGap: 0 };
+    const a = 1 - smooth01(seg01(u, 0.45, 1));
+    drawSplitBody(ctx, gs, abilityId, {
+      gap: LADRON_GAP + 7 * easeOutCubic(u), glow: 1 - u,
+      upX: -16 * u, upY: -8 * u + 34 * u * u, upR: -1.1 * u, upA: a,
+      loX: 11 * u, loY: 4 * u + 26 * u * u, loR: 0.8 * u, loA: a,
+    });
+    // destello del tajo
+    const sl = 1 - seg01(u, 0, 0.28);
+    if (sl > 0.01) {
+      ctx.save();
+      ctx.globalAlpha = sl;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "rgba(255,150,40,0.7)";
+      ctx.lineWidth = 8 * sl;
+      ctx.beginPath(); ctx.moveTo(f.x - ux * 30, cy0 - uy * 30); ctx.lineTo(f.x + ux * 30, cy0 + uy * 30); ctx.stroke();
+      ctx.strokeStyle = "#FFF6D6";
+      ctx.lineWidth = 1 + 3 * sl;
+      ctx.beginPath(); ctx.moveTo(f.x - ux * 30, cy0 - uy * 30); ctx.lineTo(f.x + ux * 30, cy0 + uy * 30); ctx.stroke();
+      ctx.lineWidth = 1.6;
+      for (let i = 0; i < 6; i++) {
+        const ang = i * 1.05 + 0.4;
+        const d1 = 6 + (1 - sl) * 16;
+        ctx.beginPath();
+        ctx.moveTo(f.x + Math.cos(ang) * d1, cy0 + Math.sin(ang) * d1);
+        ctx.lineTo(f.x + Math.cos(ang) * (d1 + 7), cy0 + Math.sin(ang) * (d1 + 7));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawLadronScene(ctx, s, abilityId, camX, info) {
+    const fx = s.ladronFx;
+    if (!fx) return;
+    if (info.phase === "join") drawLadronJoin(ctx, s, abilityId, camX, info.p);
+    else drawLadronRay(ctx, s, abilityId, camX, info.p, fx);
+  }
+
+  // Pausa 1: las dos mitades flotan, se atraen con hilos de energía y se unen con un destello
+  function drawLadronJoin(ctx, s, abilityId, camX, p) {
+    const clock = s.rachaClock || 0;
+    const px = s.player.x, py = s.player.y;
+    const ux = Math.cos(LADRON_CUT_A), uy = Math.sin(LADRON_CUT_A);
+    const nx = Math.sin(LADRON_CUT_A), ny = -Math.cos(LADRON_CUT_A);
+
+    const dimK = p < 0.12 ? p / 0.12 : p > 0.88 ? Math.max(0, (1 - p) / 0.12) : 1;
+    const vg = ctx.createRadialGradient(px, py, 26, px, py, 250);
+    vg.addColorStop(0, `rgba(24,12,2,${0.22 * dimK})`);
+    vg.addColorStop(1, `rgba(24,12,2,${0.8 * dimK})`);
+    ctx.fillStyle = vg;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    const rise = smooth01(seg01(p, 0.14, 0.46));         // se separan y flotan
+    const pull = Math.pow(seg01(p, 0.5, 0.72), 2.2);      // se atraen con fuerza
+    const gap = (LADRON_GAP + (8.5 - LADRON_GAP) * rise) * (1 - pull);
+    const glow = (0.4 + 0.6 * seg01(p, 0.12, 0.7)) * (1 - smooth01(seg01(p, 0.78, 0.98)));
+    const lift = 4 * rise * (1 - pull);
+    const cyL = py - 2 - lift;
+
+    s.cutGap = gap;
+    s.cutGlow = glow;
+    const q = seg01(p, 0.72, 1);
+    const sq = Math.sin(q * Math.PI * 3) * (1 - q) * 0.13; // rebote al unirse
+    const feetY = py + 15;
+    drawBodyXf(ctx, s, abilityId, px, feetY, px, feetY - lift, 1, 1 - sq * 0.6, 1 + sq);
+    s.cutGap = 0;
+    s.cutGlow = 0;
+
+    // hilos de energía entre las dos mitades
+    const thr = smooth01(seg01(p, 0.26, 0.46)) * (1 - seg01(p, 0.68, 0.74));
+    if (thr > 0.02 && gap > 0.6) {
+      ctx.save();
+      ctx.lineCap = "round";
+      for (let i = 0; i < 6; i++) {
+        const t = -8 + i * 3.2;
+        const ax = px + ux * t + nx * gap, ay = cyL + uy * t + ny * gap;
+        const bx = px + ux * t - nx * gap, by = cyL + uy * t - ny * gap;
+        const wob = Math.sin(clock * 14 + i * 1.7) * 2.2;
+        ctx.strokeStyle = `rgba(255,${190 + (i % 2) * 30},80,${0.85 * thr})`;
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.quadraticCurveTo((ax + bx) / 2 + wob, (ay + by) / 2, bx, by);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // motas de luz dorada subiendo alrededor
+    const moteA = smooth01(seg01(p, 0.05, 0.25)) * (1 - smooth01(seg01(p, 0.8, 0.98)));
+    for (let i = 0; i < 12; i++) {
+      const ph = (clock * 0.8 + i * 0.083) % 1;
+      const mx0 = px + Math.sin(i * 2.4 + clock * 2.2) * (9 + (i % 3) * 5);
+      const my0 = py + 16 - ph * 44;
+      ctx.fillStyle = `rgba(255,${200 + (i % 3) * 18},90,${moteA * Math.sin(ph * Math.PI) * 0.9})`;
+      ctx.beginPath(); ctx.arc(mx0, my0, 1.5 + (i % 2), 0, Math.PI * 2); ctx.fill();
+    }
+
+    // destello y onda al unirse
+    const snap = seg01(p, 0.7, 0.9);
+    if (snap > 0 && snap < 1) {
+      const R = 10 + 36 * snap;
+      const fg = ctx.createRadialGradient(px, cyL, 0, px, cyL, R);
+      fg.addColorStop(0, `rgba(255,250,225,${0.9 * (1 - snap)})`);
+      fg.addColorStop(1, "rgba(255,170,50,0)");
+      ctx.fillStyle = fg;
+      ctx.beginPath(); ctx.arc(px, cyL, R, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = `rgba(255,190,70,${0.9 * (1 - snap)})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(px, cyL, 8 + 40 * snap, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  // Pausa 2: el stickman extiende la mano, carga energía y lanza un gran rayo al monstruo;
+  // por el rayo vuelve la vida robada hacia él
+  function drawLadronRay(ctx, s, abilityId, camX, p, fx) {
+    const clock = s.rachaClock || 0;
+    const sup = fx.superMode;
+    const tl = ladronTimeline(p);
+    const px = s.player.x, py = s.player.y;
+    const mx = s.monster.x, my = s.monster.y;
+    const dx = fx.dx, dy = fx.dy;
+    const shY = py - 5;
+
+    const dimK = p < 0.1 ? p / 0.1 : p > 0.9 ? Math.max(0, (1 - p) / 0.1) : 1;
+    ctx.fillStyle = `rgba(22,10,2,${0.6 * dimK})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // stickman con el brazo extendido hacia el monstruo (retrocede un poco al disparar)
+    const recoil = 3.2 * Math.sin(Math.PI * seg01(p, 0.32, 0.56));
+    s.faseArm = tl.arm;
+    s.armDir = { x: dx, y: dy };
+    s.armColor = "#FFB03B";
+    ctx.save();
+    ctx.translate(-dx * recoil, -dy * recoil * 0.5);
+    drawPlayerBody(ctx, s, abilityId);
+    ctx.restore();
+    s.faseArm = 0;
+    s.armDir = null;
+    s.armColor = null;
+
+    const reach = 19 * tl.arm;
+    const hx0 = px + dx * reach - dx * recoil, hy0 = shY + dy * reach - 2 * tl.arm - dy * recoil * 0.5;
+    const ox = hx0 + dx * 4, oy = hy0 + dy * 4; // origen del rayo, justo delante de la mano
+
+    // monstruo: mira al stickman y tiembla con el impacto
+    const shakeA = seg01(p, 0.5, 0.56) * (1 - seg01(p, 0.8, 0.9)) * 2.4;
+    const shx = Math.sin(clock * 95) * shakeA, shy = Math.cos(clock * 83) * shakeA * 0.8;
+    drawMonsterBody(ctx, s, abilityId, {
+      x: mx + shx, y: my + shy, facingAngle: Math.atan2(-dy, -dx),
+      stunned: s.stunT > 0, dancing: s.danceT > 0, alpha: 1, seed: 0, echo: false,
+    });
+
+    // chispas que convergen en la mano mientras carga
+    const orbA = tl.arm * (1 - smooth01(seg01(p, 0.8, 0.92)));
+    const orbR = 2 + (sup ? 17 : 12) * tl.charge * (1 - 0.25 * tl.beam);
+    if (tl.arm > 0.2 && tl.beam < 0.99) {
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineWidth = 1.8;
+      for (let i = 0; i < 10; i++) {
+        const ph = (clock * 1.7 + i * 0.1) % 1;
+        const ang = i * 2.399 + clock * 3;
+        const d1 = (34 + 6 * (i % 3)) * (1 - ph) + orbR;
+        ctx.strokeStyle = `rgba(255,190,80,${orbA * (0.3 + 0.7 * ph) * (1 - tl.beam)})`;
+        ctx.beginPath();
+        ctx.moveTo(ox + Math.cos(ang) * d1, oy + Math.sin(ang) * d1);
+        ctx.lineTo(ox + Math.cos(ang) * (d1 + 7), oy + Math.sin(ang) * (d1 + 7));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // el gran rayo
+    if (tl.beam > 0.01) {
+      const tx = mx + shx * 0.3, ty = my + shy * 0.3;
+      const bx = ox + (tx - ox) * tl.head, by = oy + (ty - oy) * tl.head;
+      const W = (sup ? 13 : 9) * (1 - 0.35 * tl.drain) * (1 + 0.08 * Math.sin(clock * 45)) * (0.5 + 0.5 * seg01(p, 0.32, 0.42));
+      drawLadronBeam(ctx, ox, oy, bx, by, W, clock, tl.beam);
+    }
+    if (tl.head > 0.98) drawLadronImpact(ctx, mx, my, tl.hit, tl.beam, sup, clock);
+
+    // orbe de energía en la mano
+    if (tl.arm > 0.2 && orbA > 0.01) {
+      const og = ctx.createRadialGradient(ox, oy, 0, ox, oy, orbR * 1.8);
+      og.addColorStop(0, `rgba(255,252,235,${orbA})`);
+      og.addColorStop(0.35, `rgba(255,200,80,${orbA * 0.9})`);
+      og.addColorStop(1, "rgba(255,110,20,0)");
+      ctx.fillStyle = og;
+      ctx.beginPath(); ctx.arc(ox, oy, orbR * 1.8, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // la vida robada viaja por el rayo de vuelta al stickman
+    if (tl.drain > 0.001) {
+      const nxv = -dy, nyv = dx;
+      const moteA = smooth01(seg01(p, 0.56, 0.62)) * (1 - smooth01(seg01(p, 0.84, 0.9)));
+      for (let i = 0; i < 16; i++) {
+        const m = (clock * 1.4 + i / 16) % 1;
+        const wob = Math.sin(m * 12 + i) * 4;
+        ctx.fillStyle = `rgba(255,${170 + (i % 3) * 30},70,${0.85 * moteA})`;
+        ctx.beginPath();
+        ctx.arc(mx + (ox - mx) * m + nxv * wob, my + (oy - my) * m + nyv * wob, 1.7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const nH = sup ? 5 : 1;
+      const span = 1 - (nH - 1) * 0.12;
+      for (let j = 0; j < nH; j++) {
+        const u = Math.max(0, Math.min(1, (tl.drain - j * 0.12) / span));
+        if (u <= 0 || u >= 1) continue;
+        const e = u * u * (3 - 2 * u);
+        const wob = Math.sin(u * Math.PI * 3 + j * 1.3) * 5;
+        const hx = mx + (ox - mx) * e + nxv * wob, hy = my + (oy - my) * e + nyv * wob;
+        const size = (sup ? 6.5 : 10) * (0.45 + 0.55 * Math.min(1, u * 4)) * (1 - 0.45 * seg01(u, 0.85, 1));
+        ctx.fillStyle = "rgba(255,170,60,0.35)";
+        ctx.beginPath(); ctx.arc(hx, hy, size * 2.2, 0, Math.PI * 2); ctx.fill();
+        drawHeartShape(ctx, hx, hy, size);
+        ctx.fillStyle = "#FF5A36";
+        ctx.fill();
+        ctx.strokeStyle = "#FFF3D0";
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+      }
+    }
+
+    // la vida llega al stickman
+    if (tl.land > 0 && tl.land < 1) {
+      const lx = px, ly = py - 3;
+      const gl = ctx.createRadialGradient(lx, ly, 2, lx, ly, 34);
+      gl.addColorStop(0, `rgba(255,236,170,${0.7 * (1 - tl.land)})`);
+      gl.addColorStop(1, "rgba(255,120,30,0)");
+      ctx.fillStyle = gl;
+      ctx.beginPath(); ctx.arc(lx, ly, 34, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = `rgba(255,190,70,${0.9 * (1 - tl.land)})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(lx, ly, 10 + 34 * tl.land, 0, Math.PI * 2); ctx.stroke();
+      const ta = smooth01(seg01(tl.land, 0, 0.25)) * (1 - seg01(tl.land, 0.75, 1));
+      const label = fx.gain > 0 ? `+${fx.gain} ♥` : "♥ MAX";
+      const ty = py < 50 ? py + 34 + 12 * tl.land : py - 26 - 12 * tl.land;
+      ctx.save();
+      ctx.globalAlpha = ta;
+      ctx.font = "bold 15px 'Kalam', cursive";
+      ctx.textAlign = "center";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(120,40,0,0.9)";
+      ctx.strokeText(label, lx, ty);
+      ctx.fillStyle = "#FFE7A8";
+      ctx.fillText(label, lx, ty);
+      ctx.restore();
+    }
+  }
+
+  // Dibuja el cuerpo (cualquier personaje) con transparencia usando un canvas auxiliar
+  function drawPlayerFaded(ctx, s, abilityId, alpha) {
+    if (alpha <= 0.01) return;
+    if (!_rachaOff) {
+      _rachaOff = document.createElement("canvas");
+      _rachaOff.width = 240;
+      _rachaOff.height = 240;
+    }
+    const octx = _rachaOff.getContext("2d");
+    octx.setTransform(1, 0, 0, 1, 0, 0);
+    octx.clearRect(0, 0, 240, 240);
+    octx.translate(120 - s.player.x, 120 - s.player.y);
+    drawPlayerBody(octx, s, abilityId);
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.drawImage(_rachaOff, s.player.x - 120, s.player.y - 120);
+    ctx.restore();
+  }
+
   function drawPlayer(ctx, s, abilityId) {
+    const charging = s.rachaChargeT > 0;
+    const dashing = s.dashT > 0;
+    const revealing = s.rachaReveal > 0;
+    const hasTrail = !!(s.rachaTrail && s.rachaTrail.length > 1);
+    if (!charging && !dashing && !revealing && !hasTrail) {
+      drawPlayerBody(ctx, s, abilityId);
+      return;
+    }
+    const { x, y } = s.player;
+    drawRachaTrail(ctx, s);
+    if (charging) {
+      // brilla en azul hasta que el cuerpo desaparece y solo queda la energía
+      const p = 1 - s.rachaChargeT / RACHA_CHARGE_T;
+      const glow = Math.min(1, p / 0.8);
+      drawRachaHalo(ctx, s, x, y, glow, true, p);
+      drawPlayerFaded(ctx, s, abilityId, 1 - Math.min(1, Math.max(0, (glow - 0.15) / 0.8)));
+      drawRachaCore(ctx, s, x, y, glow);
+    } else if (dashing) {
+      // súper velocidad: solo se ve la energía azul
+      drawRachaHalo(ctx, s, x, y, 1, false, 1);
+      drawRachaCore(ctx, s, x, y, 1);
+    } else if (revealing) {
+      // la energía se disipa y el stickman reaparece
+      const q = s.rachaReveal / RACHA_REVEAL_T;
+      drawRachaHalo(ctx, s, x, y, q, false, 1);
+      drawPlayerFaded(ctx, s, abilityId, 1 - q);
+      drawRachaCore(ctx, s, x, y, q * 0.8);
+      ctx.save();
+      ctx.strokeStyle = `rgba(63,140,255,${q * 0.8})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(x, y - 2, 14 + (1 - q) * 30, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      drawPlayerBody(ctx, s, abilityId);
+    }
+  }
+
+  function drawPlayerBodyRaw(ctx, s, abilityId) {
     const { x, y } = s.player;
     const bodyColor = s.playerColor || "#2B2A28";
     const stealthActive = s.activeEffectAbility === "sigilo" && s.activeEffectT > 0;
@@ -3692,6 +4736,37 @@ function ChaseGame({
       ctx.lineTo(lHandX, lHandY);
       ctx.moveTo(x, hipY - 7);
       ctx.lineTo(rHandX, rHandY);
+    } else if (s.faseArm > 0) {
+      // Fase: un brazo cuelga y el otro se extiende hacia el portal con la mano abierta
+      const fa = s.faseArm;
+      const fdx = s.armDir ? s.armDir.x : s.faseFx ? s.faseFx.dx : s.facing.x, fdy = s.armDir ? s.armDir.y : s.faseFx ? s.faseFx.dy : s.facing.y;
+      const side = fdx >= 0 ? 1 : -1;
+      const shY = hipY - 7;
+      const reach = 19 * fa;
+      const rhx = x + fdx * reach, rhy = shY + fdy * reach - 2 * fa;
+      const rex = x + fdx * reach * 0.5 - fdy * 2.4 * (1 - 0.6 * fa), rey = shY + fdy * reach * 0.5 + fdx * 2.4 * (1 - 0.6 * fa) - fa;
+      const idleX = x - side * 6.5, idleY = hipY;
+      if (side > 0) { lHandX = idleX; lHandY = idleY; rHandX = rhx; rHandY = rhy; }
+      else { rHandX = idleX; rHandY = idleY; lHandX = rhx; lHandY = rhy; }
+      ctx.moveTo(x, shY);
+      ctx.lineTo(idleX, idleY);
+      ctx.moveTo(x, shY);
+      ctx.lineTo(rex, rey);
+      ctx.lineTo(rhx, rhy);
+      ctx.stroke();
+      // mano abierta, dedos abiertos en abanico hacia el portal
+      const ha = Math.atan2(fdy, fdx);
+      ctx.strokeStyle = s.armColor || ABILITIES.fase.accent;
+      ctx.lineWidth = 1.3;
+      [-0.55, -0.18, 0.18, 0.55].forEach((off) => {
+        ctx.beginPath();
+        ctx.moveTo(rhx, rhy);
+        ctx.lineTo(rhx + Math.cos(ha + off) * 4.6 * fa, rhy + Math.sin(ha + off) * 4.6 * fa);
+        ctx.stroke();
+      });
+      ctx.strokeStyle = bodyColor;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
     } else if (s.moving) {
       // articulated running arms: shoulder → elbow → hand, swinging opposite the legs
       const armPhaseL = Math.sin(runPhase + Math.PI);
@@ -3746,7 +4821,7 @@ function ChaseGame({
     }
     ctx.stroke();
 
-    if (abilityId === "fase" && !victory) {
+    if (abilityId === "fase" && !victory && !(s.faseArm > 0)) {
       ctx.strokeStyle = ABILITIES.fase.accent;
       ctx.lineWidth = 1.1;
       [[lHandX, lHandY, -1], [rHandX, rHandY, 1]].forEach(([hx, hy, side]) => {
@@ -3853,6 +4928,7 @@ function ChaseGame({
            un tamaño de arranque razonable para el primer instante, antes de
            que el efecto JS mida y ajuste. */
         .game-stage{
+          position: relative;
           flex: 1 1 auto;
           min-height: 0;
           min-width: 0;
@@ -3905,54 +4981,65 @@ function ChaseGame({
       </p>
 
       {hud.status === "menu" && (
-        <div className="mb-4 p-4 rounded-lg border-2 w-full max-w-md" style={{ borderColor: "#2B2A28", background: "#FBFAF5" }}>
-          {onBackToCreator && (
-            <button
-              onClick={onBackToCreator}
-              className="text-xs marker mb-2 underline"
-              style={{ color: "#5B5850" }}
-            >
-              ‹ Volver al creador de personaje
-            </button>
-          )}
-          {playerName && (
-            <p className="text-sm mb-1" style={{ color: "#5B5850" }}>Jugando como <strong>{playerName}</strong></p>
-          )}
-          {characterKind !== "stickman" ? (
-            <>
-              <p className="marker text-lg mb-2" style={{ color: "#2B2A28" }}>
-                {ANIMAL_KINDS[characterKind].label}
-              </p>
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                {ANIMAL_KINDS[characterKind].abilities.map((id, i) => {
-                  const a = ABILITIES[id];
-                  return (
-                    <div key={id} className="p-2.5 rounded border-2 text-left" style={{ borderColor: a.accent, background: `${a.accent}14` }}>
+        <div
+          className="mb-4 rounded-lg border-2 w-full max-w-md flex flex-col"
+          style={{
+            borderColor: "#2B2A28",
+            background: "#FBFAF5",
+            maxHeight: viewportH ? `${Math.max(180, viewportH - 24)}px` : "90vh",
+          }}
+        >
+          <div className="p-4 pb-2 overflow-y-auto" style={{ minHeight: 0, flex: "1 1 auto" }}>
+            {onBackToCreator && (
+              <button
+                onClick={onBackToCreator}
+                className="text-xs marker mb-2 underline"
+                style={{ color: "#5B5850" }}
+              >
+                ‹ Volver al creador de personaje
+              </button>
+            )}
+            {playerName && (
+              <p className="text-sm mb-1" style={{ color: "#5B5850" }}>Jugando como <strong>{playerName}</strong></p>
+            )}
+            {characterKind !== "stickman" ? (
+              <>
+                <p className="marker text-lg mb-2" style={{ color: "#2B2A28" }}>
+                  {ANIMAL_KINDS[characterKind].label}
+                </p>
+                <div className="grid grid-cols-2 gap-2 mb-1">
+                  {ANIMAL_KINDS[characterKind].abilities.map((id, i) => {
+                    const a = ABILITIES[id];
+                    return (
+                      <div key={id} className="p-2.5 rounded border-2 text-left" style={{ borderColor: a.accent, background: `${a.accent}14` }}>
+                        <span className="marker text-base" style={{ color: "#2B2A28" }}>{a.name}</span>
+                        <div className="text-xs" style={{ color: "#5B5850" }}>{i === 0 ? "Toque" : "Mantener presionado"}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="marker text-lg mb-2" style={{ color: "#2B2A28" }}>Elige tu habilidad para huir</p>
+                <div className="grid grid-cols-2 gap-2 mb-1">
+                  {Object.entries(ABILITIES).map(([id, a]) => (
+                    <button key={id} onClick={() => setPick(id)}
+                      className="p-2.5 rounded border-2 text-left active:scale-95 transition-transform"
+                      style={{ borderColor: pick === id ? a.accent : "#D8D3C4", background: pick === id ? `${a.accent}14` : "#fff" }}>
                       <span className="marker text-base" style={{ color: "#2B2A28" }}>{a.name}</span>
-                      <div className="text-xs" style={{ color: "#5B5850" }}>{i === 0 ? "Toque" : "Mantener presionado"}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="marker text-lg mb-2" style={{ color: "#2B2A28" }}>Elige tu habilidad para huir</p>
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                {Object.entries(ABILITIES).map(([id, a]) => (
-                  <button key={id} onClick={() => setPick(id)}
-                    className="p-2.5 rounded border-2 text-left active:scale-95 transition-transform"
-                    style={{ borderColor: pick === id ? a.accent : "#D8D3C4", background: pick === id ? `${a.accent}14` : "#fff" }}>
-                    <span className="marker text-base" style={{ color: "#2B2A28" }}>{a.name}</span>
-                    <div className="text-xs" style={{ color: "#5B5850" }}>{a.tag}</div>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-          <button onClick={() => reset(characterKind !== "stickman" ? initialAbility : pick)} className="w-full py-3 rounded marker text-lg active:scale-95 transition-transform" style={{ background: "#2B2A28", color: "#F4F1E9" }}>
-            Empezar
-          </button>
+                      <div className="text-xs" style={{ color: "#5B5850" }}>{a.tag}</div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          <div className="p-4 pt-2" style={{ flex: "0 0 auto" }}>
+            <button onClick={() => reset(characterKind !== "stickman" ? initialAbility : pick)} className="w-full py-3 rounded marker text-lg active:scale-95 transition-transform" style={{ background: "#2B2A28", color: "#F4F1E9" }}>
+              Empezar
+            </button>
+          </div>
         </div>
       )}
 
@@ -4017,72 +5104,6 @@ function ChaseGame({
           style={{ display: "block", width: "100%", height: "100%", borderRadius: 6 }}
         />
 
-        {hud.status === "playing" && (
-          <>
-            <div
-              ref={joyZoneRef}
-              onPointerDown={onJoyDown}
-              onPointerMove={onJoyMove}
-              onPointerUp={onJoyUp}
-              onPointerCancel={onJoyUp}
-              className="absolute rounded-full"
-              style={{
-                left: 14, bottom: 14, width: 96, height: 96,
-                background: "rgba(43,42,40,0.10)",
-                border: "2px solid #2B2A28",
-                touchAction: "none",
-              }}
-            >
-              <div
-                className="absolute rounded-full"
-                style={{
-                  width: 40, height: 40, background: "#2B2A28", opacity: thumb.active ? 0.85 : 0.5,
-                  left: "50%", top: "50%",
-                  transform: `translate(-50%, -50%) translate(${thumb.x}px, ${thumb.y}px)`,
-                }}
-              />
-            </div>
-
-            <button
-              onPointerDown={onAbilityDown}
-              onPointerUp={onAbilityUp}
-              onPointerCancel={onAbilityUp}
-              onPointerLeave={onAbilityUp}
-              className="absolute rounded-full flex items-center justify-center marker text-center leading-tight"
-              style={{
-                right: 14, bottom: 14, width: 74, height: 74,
-                background: `${ab.accent}CC`,
-                border: "3px solid #2B2A28",
-                color: "#FBFAF5",
-                fontSize: 13,
-                touchAction: "none",
-              }}
-            >
-              {ab.name}
-            </button>
-
-            {secondaryAbility && (
-              <button
-                onPointerDown={onSecondaryDown}
-                onPointerUp={onSecondaryUp}
-                onPointerCancel={onSecondaryUp}
-                onPointerLeave={onSecondaryUp}
-                className="absolute rounded-full flex items-center justify-center marker text-center leading-tight"
-                style={{
-                  right: 100, bottom: 14, width: 62, height: 62,
-                  background: `${ABILITIES[secondaryAbility].accent}CC`,
-                  border: "3px solid #2B2A28",
-                  color: "#FBFAF5",
-                  fontSize: 11,
-                  touchAction: "none",
-                }}
-              >
-                {ABILITIES[secondaryAbility].name}
-              </button>
-            )}
-          </>
-        )}
-
         {(hud.status === "won" || hud.status === "lost") && (
           <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(251,250,245,0.92)" }}>
             <div className="text-center px-4">
@@ -4100,6 +5121,81 @@ function ChaseGame({
           </div>
         )}
       </div>
+
+      {hud.status === "playing" && frameSize && (
+        <>
+          <div
+            className="absolute flex items-end justify-start"
+            style={{ left: 0, top: 0, bottom: 0, width: frameSize.sideZone, paddingBottom: "calc(30px + env(safe-area-inset-bottom, 0px))", paddingLeft: "calc(10px + env(safe-area-inset-left, 0px))" }}
+          >
+            <div
+              ref={joyZoneRef}
+              onPointerDown={onJoyDown}
+              onPointerMove={onJoyMove}
+              onPointerUp={onJoyUp}
+              onPointerCancel={onJoyUp}
+              className="relative rounded-full"
+              style={{
+                width: 96, height: 96,
+                background: "rgba(43,42,40,0.10)",
+                border: "2px solid #2B2A28",
+                touchAction: "none",
+              }}
+            >
+              <div
+                className="absolute rounded-full"
+                style={{
+                  width: 40, height: 40, background: "#2B2A28", opacity: thumb.active ? 0.85 : 0.5,
+                  left: "50%", top: "50%",
+                  transform: `translate(-50%, -50%) translate(${thumb.x}px, ${thumb.y}px)`,
+                }}
+              />
+            </div>
+          </div>
+
+          <div
+            className="absolute flex flex-col items-end justify-end gap-2"
+            style={{ right: 0, top: 0, bottom: 0, width: frameSize.sideZone, paddingBottom: "calc(30px + env(safe-area-inset-bottom, 0px))", paddingRight: "calc(10px + env(safe-area-inset-right, 0px))" }}
+          >
+            {secondaryAbility && (
+              <button
+                onPointerDown={onSecondaryDown}
+                onPointerUp={onSecondaryUp}
+                onPointerCancel={onSecondaryUp}
+                onPointerLeave={onSecondaryUp}
+                className="rounded-full flex items-center justify-center marker text-center leading-tight"
+                style={{
+                  width: 62, height: 62,
+                  background: `${ABILITIES[secondaryAbility].accent}CC`,
+                  border: "3px solid #2B2A28",
+                  color: "#FBFAF5",
+                  fontSize: 11,
+                  touchAction: "none",
+                }}
+              >
+                {ABILITIES[secondaryAbility].name}
+              </button>
+            )}
+            <button
+              onPointerDown={onAbilityDown}
+              onPointerUp={onAbilityUp}
+              onPointerCancel={onAbilityUp}
+              onPointerLeave={onAbilityUp}
+              className="rounded-full flex items-center justify-center marker text-center leading-tight"
+              style={{
+                width: 74, height: 74,
+                background: `${ab.accent}CC`,
+                border: "3px solid #2B2A28",
+                color: "#FBFAF5",
+                fontSize: 13,
+                touchAction: "none",
+              }}
+            >
+              {ab.name}
+            </button>
+          </div>
+        </>
+      )}
       </div>
     </div>
   );
