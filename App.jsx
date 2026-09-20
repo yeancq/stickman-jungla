@@ -1183,7 +1183,20 @@ function ChaseGame({
     const vv = window.visualViewport;
     return Math.round((vv ? vv.height : window.innerHeight) || window.innerHeight || 800);
   };
+  const getViewportW = () => {
+    if (typeof window === "undefined") return 400;
+    const vv = window.visualViewport;
+    return Math.round((vv ? vv.width : window.innerWidth) || window.innerWidth || 400);
+  };
   const [viewportH, setViewportH] = useState(getViewportH);
+  // Ancho real medido por JS, igual que el alto. Hace falta porque en
+  // algunos Android, al bloquear la orientación por código
+  // (screen.orientation.lock), el navegador termina reportando bien el
+  // alto nuevo pero se queda pegado con el ANCHO viejo (el de antes de
+  // rotar) — el resultado es un recuadro correcto pero chico, flotando
+  // sobre fondo negro. Si solo arregláramos el alto (como hacíamos antes)
+  // este caso queda sin resolver.
+  const [viewportW, setViewportW] = useState(getViewportW);
 
   useEffect(() => {
     let raf = null;
@@ -1192,6 +1205,10 @@ function ChaseGame({
       raf = requestAnimationFrame(() => {
         setViewportH((prev) => {
           const next = getViewportH();
+          return prev === next ? prev : next;
+        });
+        setViewportW((prev) => {
+          const next = getViewportW();
           return prev === next ? prev : next;
         });
       });
@@ -4914,10 +4931,14 @@ function ChaseGame({
 
   return (
     <div
-      className="w-full flex flex-col items-center py-1 px-2 landscape-fill game-root"
+      className="flex flex-col items-center py-1 px-2 landscape-fill game-root"
       style={{
         background: "#F4F1E9",
         fontFamily: "'Patrick Hand', cursive",
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: viewportW ? `${viewportW}px` : "100vw",
         height: viewportH ? `${viewportH}px` : "100vh",
         touchAction: hud.status === "playing" ? "none" : "pan-y",
         overscrollBehavior: "contain",
