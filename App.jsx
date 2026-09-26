@@ -1,22 +1,22 @@
-import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from "react";
+import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
 
 const ABILITIES = {
   viento: { price: 0, name: "Racha", accent: "#3B7FA8", cd: 3.5, dur: 1.6, tag: "Velocidad", desc: "Deja una estela de viento y esquiva al monstruo en línea recta.", stat: "Dash x2.1 · recarga 3.5s" },
-  sigilo: { price: 35, name: "Bruma", accent: "#7A5EA8", cd: 5.5, dur: 2.6, tag: "Sigilo", desc: "Se vuelve casi transparente; el monstruo pierde el rastro.", stat: "2.6s invisible · recarga 5.5s" },
+  muerte: { price: 55, name: "Muerte", accent: "#7B1FA2", cd: 7.5, dur: 0, tag: "Muerte", desc: "El juego se pausa y el personaje brilla en un morado intenso; crea una hoz gigante y aparece de golpe junto al monstruo, cortándolo por la mitad y quitándole 2 vidas. Súper: antes se acerca a una pared, la toca y esta brilla en morado antes de desaparecer y dar el golpe.", stat: "Quita 2 vidas al monstruo · recarga 7.5s" },
   tiempo: { price: 45, name: "Tiempo", accent: "#3FA089", cd: 6, dur: 3, tag: "Congelar", desc: "Lanza un reloj verde que detiene el tiempo para todos unos segundos.", stat: "Congela 3s · recarga 6s" },
-  clon: { price: 45, name: "Clon", accent: "#9B4F96", cd: 8, dur: 6, tag: "Señuelo", desc: "Deja un doble; si el monstruo te atrapa mientras dura, el clon se sacrifica y no perdés vidas.", stat: "Dura 6s · recarga 8s" },
+  luz: { price: 45, name: "Luz", accent: "#FFE066", cd: 6.5, dur: 0, tag: "Aturdimiento", desc: "El juego se pausa, el personaje se gira hacia el monstruo y lanza un ultra gigantesco rayo de luz desde las manos que lo aturde. Súper: el personaje brilla con una luz intensa y se teletransporta.", stat: "Aturde ~3.2s · recarga 6.5s" },
   fase: { price: 35, name: "Fase", accent: "#2E93A6", cd: 4.5, dur: 0, tag: "Teletransporte", desc: "Extiende la mano, abre un portal y salta al otro lado, atravesando cualquier pared en el camino.", stat: "~120px · recarga 4.5s" },
   electrico: { price: 40, name: "Descarga", accent: "#C9A227", cd: 5.5, dur: 0, tag: "Aturdimiento", desc: "Lanza un rayo amarillo que paraliza al monstruo un rato al impactar.", stat: "Paraliza ~2.6s · recarga 5.5s" },
-  fuego: { price: 35, name: "Brasa", accent: "#E8460F", cd: 5, dur: 2.2, tag: "Fuego", desc: "Deja un rastro de llamas vivas que queman al monstruo si se acerca.", stat: "2.2s de rastro · recarga 5s" },
+  fuego: { price: 35, name: "Brasa", accent: "#E8460F", cd: 5, dur: 2.2, tag: "Fuego", desc: "Una gran bola de fuego te envuelve tan brillante que no se te ve; si el monstruo se acerca, queda quemado. Súper: tus manos incendian por completo las paredes cercanas.", stat: "Bola de fuego 2.2s · recarga 5s" },
   mutar: { price: 45, name: "Mutar", accent: "#4C9A2A", cd: 6, dur: 3, tag: "Veneno", desc: "Le crece una cola y corre a cuatro patas; lanza gas verde que paraliza al monstruo.", stat: "Paraliza ~2.9s · recarga 6s" },
   roquero: { price: 40, name: "Roquero", accent: "#D6336C", cd: 6, dur: 3.2, tag: "Baile", desc: "Lleva una guitarra eléctrica y lanza notas que ponen a bailar al monstruo.", stat: "Baila 3.2s · recarga 6s" },
   laser: { price: 60, name: "Láser", accent: "#E63946", cd: 7, dur: 0, tag: "Demolición", desc: "Dispara un láser desde la cabeza que rompe la primera pared que encuentra.", stat: "Rompe 1 pared · recarga 7s" },
-  sierra: { price: 45, name: "Sierra", accent: "#7C868D", cd: 8, dur: 4, tag: "Escudo", desc: "Dos sierras te rodean y te protegen de todo; si tocás un animal con ellas activas, desaparece.", stat: "Escudo 4s · recarga 8s" },
+  metal: { price: 45, name: "Metal", accent: "#8A93A0", cd: 8, dur: 4, tag: "Blindaje", desc: "El juego se pausa y una capa de metal te recubre: corrés mucho más rápido y los ataques que te toquen rebotan de vuelta. Súper: apuntás ambas manos al frente y disparás 30 rayos de cada mano; donde caen forman bultos metálicos que sólo vos podés atravesar.", stat: "Blindaje 4s · recarga 8s" },
   tornado: { price: 50, name: "Tornado", accent: "#5C8AA6", cd: 9, dur: 1.2, tag: "Torbellino", desc: "Giras y un tornado te arrastra a gran velocidad; lanza otro en sentido contrario que se lleva al monstruo si lo toca.", stat: "1.2s de impulso · recarga 9s" },
   ladron: { price: 40, name: "Ladrón", accent: "#B8860B", cd: 7, dur: 0, tag: "Robo", desc: "Lanza un gran rayo que le roba una vida al monstruo; esa vida pasa a ser tuya. Si el monstruo te toca, quedás cortado por la mitad hasta que uses el robo.", stat: "Roba 1 vida · recarga 7s" },
 };
 
-let VIEW_W = 900;
+const VIEW_W = 640;
 const VIEW_H = 420;
 const WORLD_W = 1700, WORLD_H = 420;
 
@@ -403,6 +403,190 @@ function startLadron(s, superMode) {
   if (superMode) s.superFx = null;
 }
 
+// Muerte: el juego se pausa y se enfoca en el personaje, que brilla en un morado intenso y
+// hace crecer una hoz gigante; de golpe aparece junto al monstruo y lo corta por la mitad,
+// quitándole 2 vidas. Súper: antes de eso, el personaje se acerca a la pared más cercana, la
+// toca (la pared brilla en morado) y desaparece justo ahí antes de dar el golpe.
+const MUERTE_WALL_T = 1.3;         // súper: acercarse y tocar la pared
+const MUERTE_STRIKE_T = 1.9;       // habilidad normal: brillo + hoz + corte
+const MUERTE_STRIKE_SUPER_T = 1.9; // lo mismo, después de la fase de la pared
+const MUERTE_CUT_A = 0.5;          // inclinación del tajo sobre el monstruo (rad)
+const MUERTE_CUT_FX_T = 0.9;       // duración del tajo visible sobre el monstruo
+let _muerteOff = null;             // canvas auxiliar para teñir de morado a cualquier personaje
+let _luzOff = null;                // canvas auxiliar para teñir de blanco-dorado a cualquier personaje
+
+function muertePhase(fx, remaining) {
+  const el = Math.max(0, fx.total - remaining);
+  if (fx.wallT > 0 && el < fx.wallT) return { phase: "wall", p: el / fx.wallT, el };
+  return { phase: "strike", p: Math.min(1, (el - fx.wallT) / fx.strikeT), el };
+}
+
+// línea de tiempo de la fase de la pared (solo súper, p = 0..1)
+function muerteWallTimeline(p) {
+  return {
+    walk: easeOutCubic(seg01(p, 0, 0.5)),                                            // camina hacia la pared
+    reach: smooth01(seg01(p, 0.38, 0.58)),                                            // extiende el brazo
+    wallGlow: smooth01(seg01(p, 0.52, 0.86)) * (1 - smooth01(seg01(p, 0.96, 1))),      // la pared brilla morado
+    fade: smooth01(seg01(p, 0.72, 0.98)),                                             // desaparece junto a la pared
+  };
+}
+
+// línea de tiempo del brillo + hoz + corte (p = 0..1)
+function muerteStrikeTimeline(p) {
+  return {
+    glow: smooth01(seg01(p, 0, 0.22)) * (1 - smooth01(seg01(p, 0.9, 1))),             // aura morada intensa
+    scytheA: smooth01(seg01(p, 0.14, 0.28)) * (1 - smooth01(seg01(p, 0.86, 1))),       // opacidad de la hoz
+    scythe: easeOutCubic(seg01(p, 0.16, 0.4)),                                         // crecimiento de la hoz
+    vanish: smooth01(seg01(p, 0.4, 0.5)),                                             // se desvanece en su lugar
+    strike: easeOutCubic(seg01(p, 0.5, 0.62)),                                         // el tajo junto al monstruo
+    impact: smooth01(seg01(p, 0.56, 0.74)) * (1 - smooth01(seg01(p, 0.92, 1))),        // destello del corte
+    pan: smooth01(seg01(p, 0.48, 0.62)) * (1 - smooth01(seg01(p, 0.72, 0.92))),        // la cámara acompaña el salto
+    ret: smooth01(seg01(p, 0.82, 1)),                                                  // reaparece en su lugar
+  };
+}
+
+function startMuerte(s, superMode, nearWall) {
+  const alive = !s.monsterDefeated && s.monsterLives > 0;
+  const wallT = superMode && nearWall ? MUERTE_WALL_T : 0;
+  const strikeT = superMode ? MUERTE_STRIKE_SUPER_T : MUERTE_STRIKE_T;
+  let wall = null;
+  if (wallT > 0) {
+    const px = s.player.x, py = s.player.y;
+    const wl = nearWall.wl;
+    const ox = Math.max(wl.x, Math.min(px, wl.x + wl.w));
+    const oy = Math.max(wl.y, Math.min(py, wl.y + wl.h));
+    const dx = ox - px, dy = oy - py;
+    const dl = Math.hypot(dx, dy) || 1;
+    const stop = 15;
+    wall = {
+      touchX: ox, touchY: oy,
+      walkToX: ox - (dx / dl) * stop, walkToY: oy - (dy / dl) * stop,
+      dir: { x: dx / dl, y: dy / dl },
+      fromX: px, fromY: py,
+    };
+  }
+  s.muerteFx = {
+    superMode, wallT, strikeT,
+    total: wallT + strikeT,
+    applyAt: wallT + strikeT * 0.62,
+    fromX: s.player.x, fromY: s.player.y,
+    monsterX: s.monster.x, monsterY: s.monster.y,
+    wall,
+    applied: !alive,
+  };
+  s.muerteT = wallT + strikeT;
+  s.moving = false;
+  if (superMode) s.superFx = null;
+}
+
+// Tiempo (congelar): el juego se pausa mientras el stickman se voltea hacia el monstruo,
+// extiende el brazo y dispara una esfera verde brillante que lo paraliza al llegar.
+const TIEMPO_T = 1.2;        // segundos de pausa total (habilidad normal)
+const TIEMPO_SPHERE_R = 22;  // radio base de la esfera (grande y bien visible)
+
+// línea de tiempo de la pausa de Tiempo (p = 0..1)
+function tiempoTimeline(p) {
+  return {
+    arm: smooth01(seg01(p, 0.04, 0.28)) * (1 - smooth01(seg01(p, 0.94, 1))), // se voltea y extiende el brazo
+    charge: seg01(p, 0.08, 0.4),                                             // la esfera se forma en la mano
+    travel: easeOutCubic(seg01(p, 0.4, 0.86)),                                // la esfera viaja hacia el monstruo
+    hit: seg01(p, 0.86, 1),                                                   // impacto y congelamiento
+  };
+}
+
+function startTiempo(s, dur) {
+  const hx = s.player.x, hy = s.player.y - 5;
+  const dx = s.monster.x - hx, dy = s.monster.y - hy;
+  const d = Math.hypot(dx, dy) || 1;
+  s.tiempoFx = { dx: dx / d, dy: dy / d, dur };
+  s.tiempoT = TIEMPO_T;
+  s.moving = false;
+}
+
+// Súper Tiempo: el juego se pausa mientras el stickman salta y aterriza sobre una motocicleta
+// cuyas ruedas son relojes analógicos; al arrancar obtiene la misma velocidad e inmunidad que Racha.
+const MOTO_T = 1.0; // segundos de pausa total antes de arrancar
+
+function motoTimeline(p) {
+  return {
+    crouch: seg01(p, 0, 0.16),                    // se agacha para saltar
+    jump: seg01(p, 0.14, 0.56),                    // arco del salto
+    bike: smooth01(seg01(p, 0.3, 0.6)),            // la motocicleta aparece debajo
+    rev: seg01(p, 0.66, 1),                        // arranca (las ruedas-reloj giran cada vez más rápido)
+  };
+}
+
+function startMotoSuper(s) {
+  s.motoFx = {};
+  s.motoT = MOTO_T;
+  s.moving = false;
+  s.superFx = null;
+}
+
+// Una rueda-reloj: esfera analógica con manecillas que giran a `spin` radianes
+function drawClockWheel(ctx, x, y, r, spin) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = "#155C42";
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#F4F1E9";
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#155C42";
+  ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = ABILITIES.tiempo.accent;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72);
+    ctx.lineTo(Math.cos(a) * r * 0.56, Math.sin(a) * r * 0.56);
+    ctx.stroke();
+  }
+  ctx.save();
+  ctx.rotate(spin);
+  ctx.strokeStyle = "#1A1917";
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(0, 0); ctx.lineTo(0, -r * 0.44);
+  ctx.moveTo(0, 0); ctx.lineTo(r * 0.3, r * 0.05);
+  ctx.stroke();
+  ctx.restore();
+  ctx.restore();
+}
+
+// La motocicleta de relojes: se dibuja debajo del jugador. k = 0..1 (aparición/escala), spin = giro de las ruedas
+function drawMotoBody(ctx, x, y, k, spin) {
+  if (k <= 0.01) return;
+  ctx.save();
+  ctx.globalAlpha = k;
+  const wr = 7.5 * Math.min(1, k * 1.5);
+  const wy = y + 9;
+  ctx.strokeStyle = "#2FAE7A";
+  ctx.lineWidth = 2.6;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x - 14, wy - 1);
+  ctx.lineTo(x - 3, wy - 9);
+  ctx.lineTo(x + 7, wy - 11);
+  ctx.lineTo(x + 13, wy - 1);
+  ctx.moveTo(x + 7, wy - 11);
+  ctx.lineTo(x + 16, wy - 17);
+  ctx.stroke();
+  ctx.strokeStyle = "#155C42";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x - 14, wy - 1);
+  ctx.lineTo(x - 3, wy - 9);
+  ctx.lineTo(x + 7, wy - 11);
+  ctx.lineTo(x + 13, wy - 1);
+  ctx.stroke();
+  drawClockWheel(ctx, x - 14, wy, wr, spin);
+  drawClockWheel(ctx, x + 13, wy, wr, spin * 1.02);
+  ctx.restore();
+}
+
 function drawHeartShape(ctx, x, y, size) {
   ctx.beginPath();
   ctx.moveTo(x, y + size * 0.9);
@@ -527,6 +711,610 @@ function faseLanding(player, facing, walls, spikes) {
     if (faseSpotFree(x, y, walls, spikes)) return { x, y };
   }
   return { x: clampX(player.x + facing.x * FASE_DIST), y: clampY(player.y + facing.y * FASE_DIST) };
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Brasa (fuego)
+//  · Habilidad: el juego se pausa por completo, la cámara se centra en el stickman y este queda envuelto en una
+//    gran bola de fuego que brilla tanto que el cuerpo deja de verse. Después el juego sigue con la bola encendida
+//    (quema al monstruo que se acerque); el fuego se suaviza, se disipa y el stickman vuelve a la normalidad.
+//  · Súper: pausa total, el stickman se pone naranja brillante, apunta con las manos hacia las paredes y de ellas
+//    sale fuego que las envuelve por completo. Después todo vuelve a la normalidad (las paredes siguen ardiendo).
+const BRASA_T = 1.3;          // pausa total (habilidad normal)
+const BRASA_SUPER_T = 2.7;    // pausa total (súper habilidad)
+const BRASA_BALL_R = 44;      // radio de la bola de fuego
+const BRASA_BURN_R = 68;      // a esta distancia el monstruo se quema
+const BRASA_FADE_T = 0.9;     // al final la bola se suaviza y se disipa (el stickman reaparece)
+const BRASA_WALL_T = 6;       // segundos que las paredes siguen ardiendo tras la súper
+const BRASA_WALL_FADE = 1.2;  // en el último tramo las llamas de las paredes se apagan
+let _brasaOff = null;         // canvas auxiliar (alta resolución) para teñir de naranja a cualquier personaje
+let _metalOff = null;         // canvas auxiliar (alta resolución) para teñir de gris metálico a cualquier personaje
+
+const clamp01 = (k) => Math.max(0, Math.min(1, k));
+
+// línea de tiempo de la pausa de la habilidad normal (p = 0..1)
+function brasaTimeline(p) {
+  return {
+    dim: smooth01(seg01(p, 0, 0.14)) * (1 - smooth01(seg01(p, 0.9, 1))),     // oscurecido de la escena
+    zoom: smooth01(seg01(p, 0, 0.3)) * (1 - smooth01(seg01(p, 0.84, 1))),    // acercamiento y centrado
+    grow: easeOutCubic(seg01(p, 0.05, 0.55)),                                 // tamaño de la bola
+    ball: smooth01(seg01(p, 0.04, 0.4)),                                      // opacidad de la bola
+    body: seg01(p, 0.3, 0.7),                                                 // 0 = stickman visible, 1 = oculto en el fuego
+    bloom: smooth01(seg01(p, 0.42, 0.8)),                                     // brillo cegador
+    hard: smooth01(seg01(p, 0.3, 0.75)),                                      // la llama pasa de suave a "dura" (brasa)
+  };
+}
+
+// línea de tiempo de la pausa de la súper (p = 0..1)
+function brasaSuperTimeline(p) {
+  return {
+    dim: smooth01(seg01(p, 0, 0.1)) * (1 - smooth01(seg01(p, 0.9, 1))),
+    zoom: smooth01(seg01(p, 0, 0.16)) * (1 - smooth01(seg01(p, 0.88, 1))),
+    tint: smooth01(seg01(p, 0.04, 0.3)) * (1 - smooth01(seg01(p, 0.86, 1))),   // naranja brillante
+    arm: smooth01(seg01(p, 0.24, 0.42)) * (1 - smooth01(seg01(p, 0.84, 0.94))), // manos hacia las paredes
+    palm: smooth01(seg01(p, 0.38, 0.5)) * (1 - smooth01(seg01(p, 0.82, 0.92))), // fuego en las palmas
+    jet: easeOutCubic(seg01(p, 0.46, 0.66)),                                    // el chorro avanza hacia la pared
+    jetA: seg01(p, 0.46, 0.5) * (1 - smooth01(seg01(p, 0.78, 0.9))),            // visibilidad de los chorros
+  };
+}
+
+// cada pared se enciende cuando le llega el fuego: k = 0..1
+function brasaWallK(p, rank) {
+  const st = 0.56 + 0.035 * rank;
+  return smooth01(seg01(p, st, st + 0.2));
+}
+
+// posición de la mano (punta de los dedos) según la dirección d y cuánto se extendió el brazo k
+function brasaHand(s, d, k) {
+  if (s.characterKind && s.characterKind !== "stickman") {
+    return { x: s.player.x + d.x * 13 * k, y: s.player.y - 2 + d.y * 13 * k };
+  }
+  return { x: s.player.x + d.x * 20 * k, y: s.player.y - 5 + d.y * 20 * k - 1.5 * k };
+}
+
+// Súper: elige a qué pared apunta cada mano (la más cercana de cada lado) y prepara la pausa
+function startBrasaSuper(s, walls) {
+  const px = s.player.x, py = s.player.y;
+  const info = walls.map((w) => {
+    const ox = Math.max(w.wl.x, Math.min(px, w.wl.x + w.wl.w));
+    const oy = Math.max(w.wl.y, Math.min(py, w.wl.y + w.wl.h));
+    return { wl: w.wl, cx: w.cx, cy: w.cy, ox, oy, dist: Math.hypot(ox - px, oy - py) };
+  }).sort((a, b) => a.dist - b.dist);
+  let a = info.find((w) => w.ox < px);
+  let b = info.find((w) => w.ox >= px);
+  if (a && !b) b = info.find((w) => w !== a) || a;
+  if (b && !a) a = info.find((w) => w !== b) || b;
+  const same = !!a && a === b;
+  const mkHand = (w, sign, spread) => {
+    if (!w) return { d: { x: sign * 0.98, y: -0.2 }, ax: px + sign * 85, ay: py - 12, wall: false };
+    let dx = w.ox - px, dy = w.oy - (py - 5);
+    const dl = Math.hypot(dx, dy) || 1;
+    dx /= dl; dy /= dl;
+    if (spread) {
+      const ca = Math.cos(spread), sa = Math.sin(spread);
+      [dx, dy] = [dx * ca - dy * sa, dx * sa + dy * ca];
+    }
+    return { d: { x: dx, y: dy }, ax: w.ox, ay: w.oy, wall: true };
+  };
+  const hands = [mkHand(a, -1, same ? -0.22 : 0), mkHand(b, 1, same ? 0.22 : 0)];
+  const targets = [a, b].filter((w, i, arr) => w && arr.indexOf(w) === i);
+  const ordered = [...targets, ...info.filter((w) => !targets.includes(w))];
+  s.brasaFx = { superMode: true, walls: ordered, hands };
+  s.brasaT = BRASA_SUPER_T;
+  s.moving = false;
+  s.superFx = null;
+}
+
+// Habilidad normal: pausa total y bola de fuego
+function startBrasa(s, dur) {
+  s.brasaFx = { superMode: false, dur };
+  s.brasaT = BRASA_T;
+  s.moving = false;
+}
+
+// Una lengua de fuego (capas anidadas roja → naranja → amarilla): base en (x,y), apunta hacia (dx,dy)
+function drawFlame(ctx, x, y, dx, dy, h, w, flick, alpha, layers, from, to) {
+  if (alpha <= 0.01 || h <= 0.5) return;
+  const nx = -dy, ny = dx;
+  const cols = ["210,50,10", "255,130,25", "255,226,120"];
+  for (let L = from || 0; L < (to === undefined ? layers : to); L++) {
+    const ww = w * (1 - L * 0.3), hh = h * (1 - L * 0.22);
+    const f = flick * (1 - L * 0.12);
+    const tx = x + dx * hh + nx * f, ty = y + dy * hh + ny * f;
+    const mx = x + dx * hh * 0.5 + nx * f * 0.4, my = y + dy * hh * 0.5 + ny * f * 0.4;
+    ctx.fillStyle = `rgba(${cols[L + (3 - layers)]},${Math.min(1, alpha * (0.85 + L * 0.06))})`;
+    ctx.beginPath();
+    ctx.moveTo(x - nx * ww, y - ny * ww);
+    ctx.quadraticCurveTo(mx - nx * ww * 0.9, my - ny * ww * 0.9, tx, ty);
+    ctx.quadraticCurveTo(mx + nx * ww * 0.9, my + ny * ww * 0.9, x + nx * ww, y + ny * ww);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+// Gran bola de fuego alrededor de (x,y).
+// o = { r: escala del radio, a: opacidad, hard: 0 = suave/ondulada .. 1 = dura (grietas de brasa), bloom: brillo cegador }
+function drawBrasaBall(ctx, x, y, clock, o) {
+  const a = clamp01(o.a);
+  if (a <= 0.01) return;
+  const hard = clamp01(o.hard), bloom = clamp01(o.bloom);
+  const R = BRASA_BALL_R * o.r;
+  const cy = y - 2;
+  ctx.save();
+  // resplandor grande
+  const halo = ctx.createRadialGradient(x, cy, R * 0.5, x, cy, R * 2.7);
+  halo.addColorStop(0, `rgba(255,150,40,${0.6 * a})`);
+  halo.addColorStop(1, "rgba(255,90,10,0)");
+  ctx.fillStyle = halo;
+  ctx.beginPath(); ctx.arc(x, cy, R * 2.7, 0, Math.PI * 2); ctx.fill();
+
+  // lenguas de fuego alrededor (suaves = más largas y onduladas; duras = más cortas y nítidas)
+  const n = 18;
+  for (let i = 0; i < n; i++) {
+    const ang = (i / n) * Math.PI * 2 + clock * (0.35 + 0.5 * (1 - hard));
+    const wob = Math.sin(clock * (9 - 3.5 * (1 - hard)) + i * 1.9) * 0.5 + 0.5;
+    const bx = x + Math.cos(ang) * R * 0.84, by = cy + Math.sin(ang) * R * 0.84;
+    let dx = Math.cos(ang), dy = Math.sin(ang) - 0.8;
+    const dl = Math.hypot(dx, dy) || 1;
+    dx /= dl; dy /= dl;
+    const h = R * (0.42 + 0.5 * wob) * (0.8 + 0.35 * (1 - hard));
+    const flick = Math.sin(clock * 13 + i * 2.3) * (2 + 6 * (1 - hard));
+    drawFlame(ctx, bx, by, dx, dy, h, R * 0.25, flick, a, 3);
+  }
+
+  // cuerpo de la bola: el borde ondula más cuanto más suave es
+  const wv = 0.045 + 0.08 * (1 - hard);
+  const body = ctx.createRadialGradient(x, cy - R * 0.1, 1, x, cy, R * 1.08);
+  body.addColorStop(0, `rgba(255,248,215,${a})`);
+  body.addColorStop(0.35, `rgba(255,205,75,${a})`);
+  body.addColorStop(0.72, `rgba(255,112,22,${a * (0.75 + 0.25 * hard)})`);
+  body.addColorStop(1, `rgba(215,45,8,${a * (0.3 + 0.65 * hard)})`);
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  const steps = 30;
+  for (let i = 0; i <= steps; i++) {
+    const th = (i / steps) * Math.PI * 2;
+    const rr = R * (1 + wv * Math.sin(th * 5 + clock * (7 - 3 * hard)) + 0.03 * Math.sin(th * 3 - clock * 8));
+    const px = x + Math.cos(th) * rr, py = cy + Math.sin(th) * rr;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // grietas de brasa (solo cuando la llama es "dura")
+  if (hard > 0.35) {
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    const ha = (hard - 0.35) / 0.65;
+    for (let j = 0; j < 7; j++) {
+      const a0 = (j / 7) * Math.PI * 2 + 0.4 + clock * 0.12;
+      ctx.beginPath();
+      let rr = R * 0.22, ang = a0;
+      ctx.moveTo(x + Math.cos(ang) * rr, cy + Math.sin(ang) * rr);
+      for (let k = 1; k <= 4; k++) {
+        rr += R * 0.2;
+        ang = a0 + (hsh(j * 7 + k) - 0.5) * 0.7;
+        ctx.lineTo(x + Math.cos(ang) * rr, cy + Math.sin(ang) * rr);
+      }
+      ctx.strokeStyle = `rgba(150,25,0,${0.55 * ha * a})`;
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(255,236,150,${0.4 * ha * a})`;
+      ctx.lineWidth = 0.7;
+      ctx.stroke();
+    }
+  }
+
+  // brillo cegador: núcleo blanco-amarillo que tapa por completo al stickman
+  if (bloom > 0.01) {
+    const bg = ctx.createRadialGradient(x, cy, 0, x, cy, R * 1.22);
+    bg.addColorStop(0, `rgba(255,255,242,${Math.min(1, 0.97 * bloom) * a})`);
+    bg.addColorStop(0.55, `rgba(255,238,175,${0.72 * bloom * a})`);
+    bg.addColorStop(1, "rgba(255,200,90,0)");
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.arc(x, cy, R * 1.22, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // chispas que suben
+  for (let i = 0; i < 9; i++) {
+    const ph = (clock * 1.1 + i * 0.117) % 1;
+    const ex = x + Math.sin(i * 2.4 + clock * 2) * R * (0.35 + ph * 0.6);
+    const ey = cy - R * 0.3 - ph * R * 1.7;
+    ctx.fillStyle = `rgba(255,${200 + Math.floor(ph * 40)},90,${0.9 * (1 - ph) * a})`;
+    ctx.beginPath(); ctx.arc(ex, ey, 1.7 * (1 - ph * 0.5), 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// estado de la bola de fuego durante el juego (tras la pausa): sólida al principio, luego suave y se disipa
+function brasaBallState(s) {
+  if (!(s.activeEffectAbility === "fuego" && s.activeEffectT > 0)) return null;
+  const D = s.brasaBallDur || 2.2;
+  const rem = s.activeEffectT;
+  const e = Math.max(0, D - rem);
+  const c = smooth01(Math.min(1, rem / BRASA_FADE_T)); // 1 = pleno · 0 = disipado
+  return {
+    cover: c,
+    r: 0.55 + 0.45 * c,
+    a: Math.pow(c, 0.7),
+    hard: c,
+    bloom: c * (0.45 + 0.55 * (1 - smooth01(seg01(e, 0, 0.6)))),
+  };
+}
+
+// Llamas sobre el monstruo (o un clon) mientras está quemado
+function drawBurnFlames(ctx, x, y, clock, k, sc) {
+  if (k <= 0.01) return;
+  ctx.save();
+  const g = ctx.createRadialGradient(x, y, 2, x, y, 30 * sc);
+  g.addColorStop(0, `rgba(255,150,40,${0.4 * k})`);
+  g.addColorStop(1, "rgba(232,70,15,0)");
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, 30 * sc, 0, Math.PI * 2); ctx.fill();
+  for (let i = 0; i < 6; i++) {
+    const ox = (i - 2.5) * 5.6 * sc;
+    const wob = Math.sin(clock * 11 + i * 1.7) * 0.5 + 0.5;
+    drawFlame(ctx, x + ox, y + 8 * sc, 0, -1, (12 + 13 * wob) * k * sc, 4.2 * sc, Math.sin(clock * 15 + i * 2) * 2.4, k, 3);
+  }
+  ctx.restore();
+}
+
+// Una pared envuelta en llamas por completo. k = 0..1 (intensidad). origin = punto desde donde se propaga el fuego
+// (durante la súper); sin origin la pared está encendida entera.
+function drawWallFire(ctx, wl, clock, k, origin) {
+  if (k <= 0.01) return;
+  const x0 = wl.x, y0 = wl.y, w = wl.w, h = wl.h;
+  const reach = origin ? k * (Math.max(w, h) + 40) : 1e9;
+  const pulse = 0.85 + 0.15 * Math.sin(clock * 12 + x0 * 0.05);
+  ctx.save();
+  // resplandor alrededor de la pared
+  const gcx = x0 + w / 2, gcy = y0 + h / 2, gr = Math.max(w, h) * 0.55 + 22;
+  const glow = ctx.createRadialGradient(gcx, gcy, 4, gcx, gcy, gr);
+  glow.addColorStop(0, `rgba(255,150,40,${0.34 * k})`);
+  glow.addColorStop(1, "rgba(232,70,15,0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(gcx, gcy, gr, 0, Math.PI * 2); ctx.fill();
+
+  // la pared al rojo vivo (con grietas de brasa)
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x0 - 3, y0 - 3, w + 6, h + 6); ctx.clip();
+  if (origin) {
+    const g = ctx.createRadialGradient(origin.x, origin.y, 0, origin.x, origin.y, Math.max(6, reach));
+    g.addColorStop(0, `rgba(255,160,40,${0.8 * pulse})`);
+    g.addColorStop(0.75, `rgba(255,100,15,${0.62 * pulse})`);
+    g.addColorStop(1, "rgba(220,60,10,0)");
+    ctx.fillStyle = g;
+  } else {
+    ctx.fillStyle = `rgba(255,105,20,${0.62 * k * pulse})`;
+  }
+  ctx.fillRect(x0 - 3, y0 - 3, w + 6, h + 6);
+  ctx.lineCap = "round";
+  const long = w >= h;
+  const len = long ? w : h;
+  const nCr = Math.max(1, Math.floor(len / 26));
+  for (let i = 0; i < nCr; i++) {
+    const t = (i + 0.5) / nCr;
+    const px = long ? x0 + w * t : x0 + w / 2, py = long ? y0 + h / 2 : y0 + h * t;
+    if (origin && Math.hypot(px - origin.x, py - origin.y) > reach) continue;
+    ctx.strokeStyle = `rgba(255,224,130,${0.6 * k})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    const sp = long ? h : w;
+    for (let z = 0; z <= 3; z++) {
+      const off = (z / 3 - 0.5) * sp * 1.1;
+      const jit = (hsh(i * 5 + z + x0 * 0.1) - 0.5) * 7;
+      const qx = long ? px + jit : px + off, qy = long ? py + off : py + jit;
+      if (z === 0) ctx.moveTo(qx, qy); else ctx.lineTo(qx, qy);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // masa de fuego continua sobre toda la pared (une las llamas en una sola envoltura)
+  const cols = Math.max(1, Math.round(w / 10)), rows = Math.max(1, Math.round(h / 10));
+  const cw = w / cols, ch = h / rows;
+  const cells = [];
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      const cx0 = x0 + (i + 0.5) * cw, cy0 = y0 + (j + 0.5) * ch;
+      let q = 1;
+      if (origin) q = clamp01((reach - Math.hypot(cx0 - origin.x, cy0 - origin.y)) / 22);
+      if (q <= 0.02) continue;
+      const sd = i * 7.13 + j * 3.71 + x0 * 0.013 + y0 * 0.029;
+      const w1 = Math.sin(clock * 7.3 + sd) + Math.sin(clock * 12.1 + sd * 2.3);
+      const wob = w1 * 0.25 + 0.5;
+      cells.push({ cx: cx0 + (hsh(sd) - 0.5) * cw * 0.9, cy: cy0, q, sd, wob });
+    }
+  }
+  cells.forEach((c) => {
+    const rr = (9 + 6 * c.wob) * k * c.q;
+    ctx.fillStyle = `rgba(255,105,20,${0.32 * k * c.q})`;
+    ctx.beginPath(); ctx.arc(c.cx, c.cy - 3, rr, 0, Math.PI * 2); ctx.fill();
+  });
+  // llamas por toda la superficie, en dos pasadas (primero las rojas grandes, luego las naranjas y amarillas)
+  for (let pass = 0; pass < 2; pass++) {
+    cells.forEach((c) => {
+      const jt = hsh(c.sd + 3.3);
+      const hh = (9 + 22 * c.wob * (0.6 + 0.6 * jt) + 4 * (jt > 0.7 ? 1 : 0)) * k * c.q;
+      const flick = Math.sin(clock * 15 + c.sd * 1.7) * 3.2;
+      const ww = Math.max(4.8, cw * (0.62 + 0.3 * jt));
+      const a2 = Math.min(1, c.q * (0.35 + 0.65 * k));
+      if (pass === 0) drawFlame(ctx, c.cx, c.cy + ch * 0.4, 0, -1, hh * 1.12, ww * 1.15, flick, a2, 3, 0, 1);
+      else drawFlame(ctx, c.cx, c.cy + ch * 0.4, 0, -1, hh, ww, flick * 0.9, a2, 3, 1, 3);
+    });
+  }
+  // chispas que suben de la pared
+  const nEm = Math.max(2, Math.floor(len / 22));
+  for (let i = 0; i < nEm; i++) {
+    const ph = (clock * 1.2 + i * 0.37 + x0 * 0.01) % 1;
+    const t = (i + 0.5) / nEm;
+    const ex = (long ? x0 + w * t : x0 + w / 2) + Math.sin(clock * 3 + i * 2) * 6;
+    const ey = (long ? y0 : y0 + h * t) - ph * 32;
+    if (origin && Math.hypot(ex - origin.x, ey - origin.y) > reach + 20) continue;
+    ctx.fillStyle = `rgba(255,${190 + Math.floor(ph * 50)},90,${0.85 * (1 - ph) * k})`;
+    ctx.beginPath(); ctx.arc(ex, ey, 1.7 * (1 - ph * 0.5), 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// Chorro de fuego (lanzallamas) de la mano (x1,y1) hacia la pared (x2,y2). head = 0..1 hasta dónde llegó.
+function drawFireJet(ctx, x1, y1, x2, y2, head, clock, size, alpha) {
+  if (head <= 0.01 || alpha <= 0.01) return;
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+  const N = 28;
+  ctx.save();
+  for (let i = N; i >= 0; i--) {   // de la punta hacia la mano: la base queda más brillante, encima
+    const t = (i / N) * head;
+    const wig = Math.sin(clock * 21 - t * 15 + i) * (1 + 3.6 * t) * size;
+    const px = x1 + dx * t + nx * wig, py = y1 + dy * t + ny * wig - t * 4;
+    const r = (2.6 + 9.5 * t) * size;
+    ctx.fillStyle = `rgba(${t > 0.6 ? "240,80,14" : "255,125,22"},${0.5 * alpha * (1 - 0.3 * t)})`;
+    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = `rgba(255,${t > 0.4 ? 190 : 236},${t > 0.4 ? 70 : 150},${0.75 * alpha * (1 - 0.6 * t)})`;
+    ctx.beginPath(); ctx.arc(px, py, r * 0.56, 0, Math.PI * 2); ctx.fill();
+  }
+  // frente de llamas en la punta del chorro
+  const hx = x1 + dx * head, hy = y1 + dy * head;
+  const ang = Math.atan2(uy, ux);
+  for (let i = -1; i <= 1; i++) {
+    const a2 = ang + i * 0.5;
+    drawFlame(ctx, hx, hy, Math.cos(a2), Math.sin(a2), (9 + 4 * Math.sin(clock * 16 + i)) * size, 3.6 * size, Math.sin(clock * 18 + i * 2) * 2, alpha, 3);
+  }
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Descarga / Aturdir (rayo amarillo)
+//  · Habilidad: el juego se pausa por completo, la cámara se centra en el stickman y le cae encima una
+//    lluvia de rayos amarillos mientras se carga; luego extiende la mano y lanza un gran rayo directo al
+//    monstruo que lo paraliza (después el juego sigue con normalidad).
+//  · Súper: pausa total; el stickman levanta la mano y luego la baja con fuerza. De ese golpe salen rayos
+//    que forman una pared eléctrica circular a su alrededor: bloquea al monstruo y lo paraliza si la toca,
+//    y dura lo mismo que dura la súper habilidad.
+const ELECTRICO_T = 1.25;        // pausa total (habilidad normal)
+const ELECTRICO_SUPER_T = 1.3;   // pausa total (súper habilidad)
+const ELECTRICO_WALL_T = 4;      // segundos que dura la pared eléctrica tras la súper
+const ELECTRICO_WALL_R = 58;     // radio de la pared eléctrica alrededor del stickman
+
+function electricoTimeline(p) {
+  return {
+    dim: smooth01(seg01(p, 0, 0.08)) * (1 - smooth01(seg01(p, 0.93, 1))),
+    zoom: smooth01(seg01(p, 0, 0.2)) * (1 - smooth01(seg01(p, 0.85, 1))),
+    rain: smooth01(seg01(p, 0.02, 0.16)) * (1 - smooth01(seg01(p, 0.56, 0.7))),
+    charge: smooth01(seg01(p, 0.1, 0.6)),
+    arm: smooth01(seg01(p, 0.58, 0.74)) * (1 - smooth01(seg01(p, 0.9, 0.98))),
+    travel: easeOutCubic(seg01(p, 0.68, 0.9)),
+    hit: smooth01(seg01(p, 0.86, 1)),
+  };
+}
+
+function electricoSuperTimeline(p) {
+  return {
+    dim: smooth01(seg01(p, 0, 0.08)) * (1 - smooth01(seg01(p, 0.93, 1))),
+    zoom: smooth01(seg01(p, 0, 0.2)) * (1 - smooth01(seg01(p, 0.85, 1))),
+    raise: smooth01(seg01(p, 0.06, 0.38)) * (1 - smooth01(seg01(p, 0.62, 0.76))),
+    slam: easeOutCubic(seg01(p, 0.4, 0.56)),
+    bolts: smooth01(seg01(p, 0.48, 0.68)),
+    wall: smooth01(seg01(p, 0.58, 0.88)),
+  };
+}
+
+// Habilidad normal: pausa total, luego cae la lluvia de rayos sobre el stickman
+function startElectrico(s) {
+  s.electricoFx = {
+    superMode: false,
+    bolts: Array.from({ length: 7 }, (_, i) => ({
+      ox: (hsh(i * 31 + 4) - 0.5) * 64,
+      seed: hsh(i * 17 + 9) * 100,
+      delay: hsh(i * 53 + 11),
+    })),
+  };
+  s.electricoT = ELECTRICO_T;
+  s.moving = false;
+}
+
+// Súper: levanta la mano, la baja con fuerza y de ahí nacen los rayos que forman la pared eléctrica
+function startElectricoSuper(s) {
+  s.electricoFx = {
+    superMode: true,
+    bolts: Array.from({ length: 10 }, (_, i) => ({
+      ang: (i / 10) * Math.PI * 2 + hsh(i * 13 + 2) * 0.3,
+      seed: hsh(i * 29 + 7) * 100,
+      delay: hsh(i * 41 + 3) * 0.4,
+    })),
+  };
+  s.electricoT = ELECTRICO_SUPER_T;
+  s.moving = false;
+  s.superFx = null;
+}
+
+// Luz: el juego se pausa por completo, el personaje se gira hacia el monstruo, se carga con
+// un resplandor blanco-dorado y lanza un ultra gigantesco rayo de luz desde las manos que lo
+// deja aturdido.
+//  · Súper: pausa total; el personaje brilla con una luz blanca intensa hasta casi fundirse en
+//    el resplandor y se teletransporta a otro punto.
+const LUZ_T = 1.35;         // pausa total (habilidad normal)
+const LUZ_SUPER_T = 1.2;    // pausa total (súper habilidad)
+const LUZ_STUN = 3.2;       // segundos que el rayo deja aturdido al monstruo
+
+function luzTimeline(p) {
+  return {
+    dim: smooth01(seg01(p, 0, 0.08)) * (1 - smooth01(seg01(p, 0.93, 1))),
+    zoom: smooth01(seg01(p, 0, 0.2)) * (1 - smooth01(seg01(p, 0.85, 1))),
+    charge: smooth01(seg01(p, 0.06, 0.48)),
+    arm: smooth01(seg01(p, 0.4, 0.58)) * (1 - smooth01(seg01(p, 0.9, 0.98))),
+    beam: easeOutCubic(seg01(p, 0.54, 0.76)),
+    hit: smooth01(seg01(p, 0.72, 1)),
+  };
+}
+
+function luzSuperTimeline(p) {
+  return {
+    dim: smooth01(seg01(p, 0, 0.08)) * (1 - smooth01(seg01(p, 0.93, 1))),
+    zoom: smooth01(seg01(p, 0, 0.2)) * (1 - smooth01(seg01(p, 0.85, 1))),
+    glow: smooth01(seg01(p, 0.08, 0.58)),
+    vanish: smooth01(seg01(p, 0.5, 0.64)),
+    reveal: 1 - smooth01(seg01(p, 0.66, 0.92)),
+  };
+}
+
+// Habilidad normal: pausa total; el personaje se gira hacia el monstruo, se carga con un
+// resplandor blanco-dorado y lanza el rayo gigante de luz que lo aturde.
+function startLuz(s) {
+  s.luzFx = { superMode: false, applied: false };
+  s.luzT = LUZ_T;
+  s.moving = false;
+}
+
+// Súper: el personaje brilla con una luz intensa hasta casi desaparecer y se teletransporta.
+function startLuzSuper(s) {
+  const wallsNow = s.levelWalls.filter((_, i) => !s.destroyedWalls.has(i));
+  const land = faseLanding(s.player, s.facing, wallsNow, s.levelSpikes);
+  s.luzFx = { superMode: true, fromX: s.player.x, fromY: s.player.y, toX: land.x, toY: land.y };
+  s.luzT = LUZ_SUPER_T;
+  s.moving = false;
+  s.superFx = null;
+}
+
+// Metal: el juego se pausa mientras una capa de metal recubre al stickman; después corre mucho
+// más rápido y los ataques que lo toquen rebotan de vuelta hacia quien lo golpeó.
+//  · Súper: pausa total; el stickman apunta ambas manos al frente y dispara 30 rayos metálicos
+//    de cada mano. Donde cada rayo cae se forma un bulto de metal que bloquea al monstruo, pero
+//    que el propio stickman puede atravesar sin problema.
+const METAL_T = 1.1;              // pausa total (habilidad normal)
+const METAL_SPEED_MULT = 2.2;     // multiplicador de velocidad mientras el blindaje está activo
+const METAL_SUPER_T = 1.1;        // pausa total (súper habilidad)
+const METAL_RAYS_PER_HAND = 30;   // rayos disparados por cada mano en la súper
+const METAL_BLOB_LIFE = 7;        // segundos que dura cada bulto metálico
+const METAL_BLOB_R = 11;          // radio de cada bulto metálico
+
+function metalTimeline(p) {
+  return {
+    rise: smooth01(seg01(p, 0.06, 0.6)) * (1 - smooth01(seg01(p, 0.94, 1))), // la capa de metal sube por el cuerpo
+    shine: smooth01(seg01(p, 0.55, 1)),                                      // brillo final del blindaje ya puesto
+  };
+}
+
+// Habilidad normal: pausa total y capa de metal recubriendo el cuerpo
+function startMetal(s, dur) {
+  s.metalFx = { dur };
+  s.metalT = METAL_T;
+  s.moving = false;
+}
+
+function metalSuperTimeline(p) {
+  return {
+    aim: smooth01(seg01(p, 0.05, 0.46)) * (1 - smooth01(seg01(p, 0.92, 1))), // ambas manos se extienden al frente
+    fire: seg01(p, 0.42, 0.95),                                              // los rayos salen disparados
+  };
+}
+
+// Súper: ambas manos apuntan al frente y disparan 30 rayos cada una; cada impacto deja un bulto metálico
+function startMetalSuper(s) {
+  const fl = Math.hypot(s.facing.x, s.facing.y) || 1;
+  const fx0 = s.facing.x / fl, fy0 = s.facing.y / fl;
+  const baseAng = Math.atan2(fy0, fx0);
+  const handDirs = [
+    { x: Math.cos(baseAng - 0.3), y: Math.sin(baseAng - 0.3) },
+    { x: Math.cos(baseAng + 0.3), y: Math.sin(baseAng + 0.3) },
+  ];
+  const rays = [];
+  handDirs.forEach((hd, hi) => {
+    for (let i = 0; i < METAL_RAYS_PER_HAND; i++) {
+      const spread = (hsh(i * 37 + hi * 91 + 5) - 0.5) * 1.05;
+      const ang = baseAng + spread;
+      const dist = 55 + hsh(i * 53 + hi * 61 + 13) * 205;
+      const lx = Math.max(16, Math.min(WORLD_W - 16, s.player.x + Math.cos(ang) * dist));
+      const ly = Math.max(16, Math.min(WORLD_H - 16, s.player.y + Math.sin(ang) * dist));
+      rays.push({ hand: hi, x: lx, y: ly, delay: hsh(i * 29 + hi * 71 + 7) * 0.55, seed: hsh(i * 43 + hi * 19 + 3) });
+    }
+  });
+  s.metalSuperFx = { hands: handDirs, rays };
+  s.metalSuperT = METAL_SUPER_T;
+  s.moving = false;
+  s.superFx = null;
+}
+
+// Rayo en zigzag de (x1,y1) a (x2,y2): resplandor exterior + cuerpo + núcleo blanco brillante
+function drawLightningBolt(ctx, x1, y1, x2, y2, seed, alpha, color, width) {
+  if (alpha <= 0.01) return;
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len, ny = dx / len;
+  const segs = Math.max(3, Math.round(len / 16));
+  const jag = Math.min(16, len * 0.16);
+  const pts = [];
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs;
+    const off = i > 0 && i < segs ? (hsh(seed * 91.7 + i * 13.3) - 0.5) * jag : 0;
+    pts.push([x1 + dx * t + nx * off, y1 + dy * t + ny * off]);
+  }
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  [[width * 2.4, alpha * 0.3, color], [width, alpha, color], [Math.max(1, width * 0.4), alpha, "#FFF9DC"]].forEach(([w, a, c]) => {
+    ctx.strokeStyle = c;
+    ctx.lineWidth = w;
+    ctx.globalAlpha = a;
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+// Rayo gigante de luz: haz sólido blanco-dorado (sin zigzag), con destello pulsante y cabeza brillante
+function drawLightBeam(ctx, x1, y1, x2, y2, clock, alpha, color) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 2 || alpha <= 0.01) return;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, alpha);
+  ctx.lineCap = "round";
+  ctx.globalCompositeOperation = "lighter";
+  [[110, "rgba(255,255,255,0.08)"], [70, "rgba(255,255,255,0.14)"], [42, "rgba(255,246,205,0.34)"], [20, color]].forEach(([w, c]) => {
+    ctx.strokeStyle = c;
+    ctx.lineWidth = w;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  });
+  const shimmer = 0.7 + 0.3 * Math.sin(clock * 26);
+  ctx.strokeStyle = `rgba(255,255,255,${0.6 * shimmer})`;
+  ctx.lineWidth = 9;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  ctx.restore();
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = Math.min(1, alpha);
+  const hg = ctx.createRadialGradient(x2, y2, 0, x2, y2, 46);
+  hg.addColorStop(0, "rgba(255,255,255,0.95)");
+  hg.addColorStop(0.5, "rgba(255,244,190,0.5)");
+  hg.addColorStop(1, "rgba(255,244,190,0)");
+  ctx.fillStyle = hg;
+  ctx.beginPath(); ctx.arc(x2, y2, 46, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 }
 
 // Portal azul: par de anillos vistos de canto (el eje corto apunta en la dirección del salto)
@@ -899,8 +1687,8 @@ function freshState(levelIdx, playerColor, characterKind) {
     gas: null,
     projectile: null,
     spark: null,
-    clonePos: null,
-    cloneVanish: null,
+    luzT: 0,
+    luzFx: null,
     faseT: 0,
     faseFx: null,
     faseArm: 0,
@@ -925,13 +1713,18 @@ function freshState(levelIdx, playerColor, characterKind) {
     stealFx: null,
     ladronT: 0,
     ladronFx: null,
+    brasaT: 0,
+    brasaFx: null,
+    brasaArms: null,
+    brasaBallDur: 0,
+    monsterBurnT: 0,
     ladronCut: false,
     cutFx: null,
     cutGap: 0,
     cutGlow: 0,
     armDir: null,
     armColor: null,
-    sierraHitApplied: false,
+    metalHitApplied: false,
     vientoAura: null,
     cloneMonsters: [],
     tripleCD: Math.max(5, 6.5 + Math.random() * 2 - levelIdx * 1.5),
@@ -953,14 +1746,26 @@ function freshState(levelIdx, playerColor, characterKind) {
     timeRushT: 0,
     clockProj: null,
     freezeT: 0,
-    decoyClones: [],
+    tiempoT: 0,
+    tiempoFx: null,
+    motoT: 0,
+    motoFx: null,
+    electricoT: 0,
+    electricoFx: null,
+    metalT: 0,
+    metalFx: null,
+    metalSuperT: 0,
+    metalSuperFx: null,
+    metalBlobs: [],
+    muerteT: 0,
+    muerteFx: null,
+    monsterCutFx: null,
     electricWall: null,
     burningWalls: [],
     vineWalls: [],
     shockwaveFx: null,
     laserStormT: 0,
     laserStormTick: 0,
-    sawProjectiles: [],
     tornadoProjs: [],
     time: 0,
     level: levelIdx,
@@ -1125,27 +1930,8 @@ function useGameAudio() {
 // Every call here is guarded and silently ignored if the browser/device doesn't
 // support it (e.g. iOS Safari has no orientation lock), so it never breaks anything.
 function tryEnterLandscapeFullscreen() {
-  try {
-    const el = document.documentElement;
-    const req =
-      el.requestFullscreen ||
-      el.webkitRequestFullscreen ||
-      el.mozRequestFullScreen ||
-      el.msRequestFullscreen;
-    if (req) {
-      const result = req.call(el);
-      if (result && result.catch) result.catch(() => {});
-    }
-  } catch (e) {
-    /* fullscreen unavailable — ignore */
-  }
-  try {
-    if (screen.orientation && screen.orientation.lock) {
-      screen.orientation.lock("landscape").catch(() => {});
-    }
-  } catch (e) {
-    /* orientation lock unavailable — ignore */
-  }
+  // El juego ahora se queda en vertical: ya no forzamos pantalla completa
+  // ni bloqueo de orientación horizontal.
 }
 
 function ChaseGame({
@@ -1159,7 +1945,6 @@ function ChaseGame({
   onWinCoins,
 }) {
   const canvasRef = useRef(null);
-  const stageRef = useRef(null);
   const keys = useRef({});
   const joy = useRef({ x: 0, y: 0, pointerId: null, baseX: 0, baseY: 0 });
   const joyZoneRef = useRef(null);
@@ -1172,194 +1957,6 @@ function ChaseGame({
   const [pick, setPick] = useState(initialAbility);
   const audio = useGameAudio();
   const [muted, setMuted] = useState(false);
-
-  // Alto real de la ventana en píxeles, medido por JS. En vez de confiar en
-  // unidades CSS (vh/dvh), que en varios navegadores/WebViews de Android NO
-  // se recalculan correctamente al rotar el celular o al entrar a pantalla
-  // completa, medimos y aplicamos el valor real nosotros mismos. Así el
-  // contenedor del juego SIEMPRE tiene la altura exacta de lo que se ve.
-  const getViewportH = () => {
-    if (typeof window === "undefined") return 800;
-    const vv = window.visualViewport;
-    return Math.round((vv ? vv.height : window.innerHeight) || window.innerHeight || 800);
-  };
-  const getViewportW = () => {
-    if (typeof window === "undefined") return 400;
-    const vv = window.visualViewport;
-    return Math.round((vv ? vv.width : window.innerWidth) || window.innerWidth || 400);
-  };
-  const [viewportH, setViewportH] = useState(getViewportH);
-  // Ancho real medido por JS, igual que el alto. Hace falta porque en
-  // algunos Android, al bloquear la orientación por código
-  // (screen.orientation.lock), el navegador termina reportando bien el
-  // alto nuevo pero se queda pegado con el ANCHO viejo (el de antes de
-  // rotar) — el resultado es un recuadro correcto pero chico, flotando
-  // sobre fondo negro. Si solo arregláramos el alto (como hacíamos antes)
-  // este caso queda sin resolver.
-  const [viewportW, setViewportW] = useState(getViewportW);
-
-  useEffect(() => {
-    let raf = null;
-    const measure = () => {
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        setViewportH((prev) => {
-          const next = getViewportH();
-          return prev === next ? prev : next;
-        });
-        setViewportW((prev) => {
-          const next = getViewportW();
-          return prev === next ? prev : next;
-        });
-      });
-    };
-
-    measure();
-    // Reintentos cortos: pantalla completa y bloqueo de orientación son
-    // asíncronos, y algunos navegadores tardan un instante en reportar el
-    // tamaño real después de rotar el celular.
-    const timers = [50, 150, 300, 600, 1000, 1600, 2500].map((t) => setTimeout(measure, t));
-    // Además de los eventos y reintentos cortos de arriba, seguimos
-    // chequeando cada 400ms TODO el tiempo (no solo al principio). Esto es
-    // a prueba de balas contra navegadores/celulares que tardan más de lo
-    // esperado en asentarse, o que no disparan ningún evento de resize
-    // después de terminar la transición — nunca dependemos de "adivinar"
-    // cuántos reintentos alcanzan.
-    const poll = setInterval(measure, 400);
-
-    window.addEventListener("resize", measure);
-    window.addEventListener("orientationchange", measure);
-    document.addEventListener("fullscreenchange", measure);
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", measure);
-      window.visualViewport.addEventListener("scroll", measure);
-    }
-    if (window.screen && window.screen.orientation) {
-      window.screen.orientation.addEventListener("change", measure);
-    }
-
-    return () => {
-      if (raf) cancelAnimationFrame(raf);
-      timers.forEach(clearTimeout);
-      clearInterval(poll);
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("orientationchange", measure);
-      document.removeEventListener("fullscreenchange", measure);
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener("resize", measure);
-        window.visualViewport.removeEventListener("scroll", measure);
-      }
-      if (window.screen && window.screen.orientation) {
-        window.screen.orientation.removeEventListener("change", measure);
-      }
-    };
-  }, [hud.status]);
-
-  // Llenamos SIEMPRE el 100% del espacio disponible, pero para que el
-  // Stickman y todo lo demás no se vea estirado, la resolución interna del
-  // canvas (VIEW_W) tiene que tener EXACTAMENTE la misma proporción que ese
-  // espacio. Actualizamos las dos cosas (resolución del canvas y tamaño en
-  // pantalla) en el mismo instante, de forma directa sobre el DOM, para que
-  // nunca queden un paso desincronizadas (eso era lo que causaba el
-  // estiramiento: el canvas quedaba un instante con la proporción vieja
-  // mientras el CSS ya lo estiraba a la proporción nueva).
-  const [frameSize, setFrameSize] = useState(null);
-
-  useLayoutEffect(() => {
-    const el = stageRef.current;
-    if (!el) return;
-
-    let raf = null;
-    const recalcFrame = () => {
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const availW = el.clientWidth;
-        const availH = el.clientHeight;
-        if (availW <= 0 || availH <= 0) return;
-
-        // Reservamos una franja fija a cada costado para el joystick y el
-        // botón de habilidad, así quedan en el espacio sobrante y no encima
-        // del mapa. En pantallas angostas, si no entra bien, la achicamos
-        // para no comernos demasiado mapa (nunca baja de MIN_ZONE).
-        const WANT_ZONE = 130;
-        const MIN_ZONE = 90;
-        const MIN_CONTENT_W = 320;
-        let sideZone = WANT_ZONE;
-        if (availW - sideZone * 2 < MIN_CONTENT_W) {
-          sideZone = Math.max(MIN_ZONE, (availW - MIN_CONTENT_W) / 2);
-        }
-        sideZone = Math.max(0, sideZone);
-
-        // El marco tiene un borde de 2px por lado ("border-2"): el canvas
-        // vive en el área DENTRO de ese borde, así que la proporción hay que
-        // calcularla sobre esa área real, no sobre el tamaño exterior del
-        // marco — si no, queda un desajuste mínimo pero real.
-        const BORDER = 4;
-        const contentW = Math.max(1, availW - sideZone * 2 - BORDER);
-        const contentH = Math.max(1, availH - BORDER);
-
-        const exactRatio = contentW / contentH;
-        const idealViewW = VIEW_H * exactRatio;
-        let newViewW = Math.round(idealViewW);
-        const clamped = newViewW < 500 || newViewW > 1600;
-        newViewW = Math.max(500, Math.min(1600, newViewW)); // límite de seguridad, dentro de WORLD_W=1700
-
-        // Resolución interna del canvas: se actualiza YA, en el mismo tick,
-        // directo sobre el elemento — no esperamos al próximo render.
-        VIEW_W = newViewW;
-        if (canvasRef.current) {
-          canvasRef.current.width = newViewW;
-        }
-
-        // Caso normal: la proporción del canvas ya coincide exacto con el
-        // espacio disponible (descontadas las franjas) → sin distorsión.
-        // Caso extremo (proporción rarísima, fuera del límite de seguridad
-        // de arriba): en vez de forzar el llenado y arriesgar deformar el
-        // dibujo, mantenemos la proporción real y dejamos margen de más.
-        const availWForFrame = availW - sideZone * 2;
-        let w, h;
-        if (!clamped) {
-          w = availWForFrame;
-          h = availH;
-        } else {
-          const ratio = newViewW / VIEW_H;
-          w = Math.min(availWForFrame, availH * ratio);
-          h = w / ratio;
-        }
-        w = Math.floor(w);
-        h = Math.floor(h);
-        setFrameSize((prev) => (prev && prev.w === w && prev.h === h && prev.viewW === newViewW && prev.sideZone === sideZone ? prev : { w, h, viewW: newViewW, sideZone }));
-      });
-    };
-
-    recalcFrame();
-    const timers = [50, 150, 300, 600, 1000, 1600, 2500].map((t) => setTimeout(recalcFrame, t));
-    // Chequeo continuo cada 400ms mientras dure esta pantalla, además del
-    // ResizeObserver y los eventos — misma lógica a prueba de balas que en
-    // la medición de altura real de arriba.
-    const poll = setInterval(recalcFrame, 400);
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(recalcFrame) : null;
-    if (ro) ro.observe(el);
-    window.addEventListener("resize", recalcFrame);
-    window.addEventListener("orientationchange", recalcFrame);
-    document.addEventListener("fullscreenchange", recalcFrame);
-    if (window.screen && window.screen.orientation) {
-      window.screen.orientation.addEventListener("change", recalcFrame);
-    }
-
-    return () => {
-      if (raf) cancelAnimationFrame(raf);
-      timers.forEach(clearTimeout);
-      clearInterval(poll);
-      if (ro) ro.disconnect();
-      window.removeEventListener("resize", recalcFrame);
-      window.removeEventListener("orientationchange", recalcFrame);
-      document.removeEventListener("fullscreenchange", recalcFrame);
-      if (window.screen && window.screen.orientation) {
-        window.screen.orientation.removeEventListener("change", recalcFrame);
-      }
-    };
-  }, [hud.status]);
 
   const reset = useCallback((ab) => {
     tryEnterLandscapeFullscreen();
@@ -1534,6 +2131,21 @@ function ChaseGame({
       const faseFrozen = s.status === "playing" && s.faseT > 0;
       // Ladrón: mientras el stickman se une y lanza el rayo, TODO el juego queda congelado
       const ladronFrozen = s.status === "playing" && s.ladronT > 0;
+      // Brasa: mientras el stickman se envuelve en fuego (o incendia las paredes), TODO el juego queda congelado
+      const brasaFrozen = s.status === "playing" && s.brasaT > 0;
+      // Tiempo: mientras el stickman se voltea, extiende el brazo y lanza la esfera, TODO el juego queda congelado
+      const tiempoFrozen = s.status === "playing" && s.tiempoT > 0;
+      // Súper Tiempo: mientras el stickman salta y sube a la motocicleta de relojes, TODO el juego queda congelado
+      const motoFrozen = s.status === "playing" && s.motoT > 0;
+      // Descarga: mientras caen los rayos (o el golpe de mano de la súper), TODO el juego queda congelado
+      const electricoFrozen = s.status === "playing" && s.electricoT > 0;
+      const luzFrozen = s.status === "playing" && s.luzT > 0;
+      // Metal: mientras la capa de metal recubre al stickman, TODO el juego queda congelado
+      const metalFrozen = s.status === "playing" && s.metalT > 0;
+      // Súper Metal: mientras apunta las manos y dispara los rayos, TODO el juego queda congelado
+      const metalSuperFrozen = s.status === "playing" && s.metalSuperT > 0;
+      // Muerte: mientras brilla morado, crece la hoz y da el corte (o antes toca la pared en la súper), TODO el juego queda congelado
+      const muerteFrozen = s.status === "playing" && s.muerteT > 0;
       if (rachaFrozen) {
         s.rachaChargeT -= dt;
         if (s.rachaChargeT <= 0) {
@@ -1574,17 +2186,140 @@ function ChaseGame({
           s.armDir = null;
           s.armColor = null;
         }
+      } else if (brasaFrozen) {
+        s.brasaT -= dt;
+        if (s.brasaT <= 0) {
+          // termina la pausa: la bola sigue encendida (habilidad) o las paredes siguen ardiendo (súper)
+          const bf = s.brasaFx;
+          s.brasaT = 0;
+          s.brasaFx = null;
+          s.brasaArms = null;
+          if (bf) {
+            if (bf.superMode) {
+              s.burningWalls = bf.walls.map((w) => ({ x: w.cx, y: w.cy, wl: w.wl, t: BRASA_WALL_T }));
+            } else {
+              s.brasaBallDur = bf.dur;
+              s.activeEffectT = bf.dur;
+              s.activeEffectAbility = "fuego";
+            }
+          }
+        }
+      } else if (tiempoFrozen) {
+        s.tiempoT -= dt;
+        if (s.tiempoT <= 0) {
+          // termina la pausa: la esfera llegó y el monstruo queda congelado
+          s.tiempoT = 0;
+          const tf = s.tiempoFx;
+          s.tiempoFx = null;
+          s.faseArm = 0;
+          s.armDir = null;
+          s.armColor = null;
+          if (tf) s.freezeT = tf.dur;
+        }
+      } else if (motoFrozen) {
+        s.motoT -= dt;
+        if (s.motoT <= 0) {
+          // termina la pausa: arranca la motocicleta con súper velocidad e inmunidad
+          s.motoT = 0;
+          s.motoFx = null;
+          s.timeRushT = 4;
+          s.invuln = Math.max(s.invuln, 4);
+        }
+      } else if (electricoFrozen) {
+        s.electricoT -= dt;
+        if (s.electricoT <= 0) {
+          // termina la pausa: se lanza el rayo (habilidad normal) o se activa la pared eléctrica (súper)
+          const ef = s.electricoFx;
+          s.electricoT = 0;
+          s.electricoFx = null;
+          s.faseArm = 0;
+          s.armDir = null;
+          s.armColor = null;
+          if (ef) {
+            if (ef.superMode) {
+              s.electricWall = { t: ELECTRICO_WALL_T };
+            } else {
+              const dx0 = s.monster.x - s.player.x, dy0 = s.monster.y - s.player.y;
+              const d0 = Math.hypot(dx0, dy0) || 1;
+              s.projectile = { x: s.player.x, y: s.player.y, vx: (dx0 / d0) * 560, vy: (dy0 / d0) * 560, kind: "electrico", t: 0 };
+            }
+          }
+        }
+      } else if (luzFrozen) {
+        s.luzT -= dt;
+        const lf = s.luzFx;
+        if (lf && !lf.superMode && !lf.applied) {
+          const elapsed = LUZ_T - s.luzT;
+          if (elapsed >= LUZ_T * 0.72) {
+            lf.applied = true;
+            if (!s.monsterDefeated) s.stunT = Math.max(s.stunT, LUZ_STUN);
+            s.cloneMonsters.forEach((c) => { c.stunT = Math.max(c.stunT, LUZ_STUN); });
+          }
+        }
+        if (s.luzT <= 0) {
+          s.luzT = 0;
+          if (lf && lf.superMode) {
+            s.player.x = lf.toX;
+            s.player.y = lf.toY;
+          }
+          s.luzFx = null;
+          s.faseArm = 0;
+          s.armDir = null;
+          s.armColor = null;
+        }
+      } else if (metalFrozen) {
+        s.metalT -= dt;
+        if (s.metalT <= 0) {
+          // termina la pausa: la capa de metal queda puesta y empieza el blindaje (velocidad + reflejo)
+          s.metalT = 0;
+          const mf = s.metalFx;
+          s.metalFx = null;
+          if (mf) { s.activeEffectT = mf.dur; s.activeEffectAbility = "metal"; }
+        }
+      } else if (metalSuperFrozen) {
+        s.metalSuperT -= dt;
+        if (s.metalSuperT <= 0) {
+          // termina la pausa: los rayos ya cayeron y dejan los bultos metálicos en el mapa
+          s.metalSuperT = 0;
+          const msf = s.metalSuperFx;
+          s.metalSuperFx = null;
+          if (msf) {
+            s.metalBlobs.push(...msf.rays.map((r) => ({ x: r.x, y: r.y, t: METAL_BLOB_LIFE, seed: r.seed })));
+          }
+        }
+      } else if (muerteFrozen) {
+        s.muerteT -= dt;
+        const mf = s.muerteFx;
+        if (mf) {
+          const elapsed = mf.total - s.muerteT;
+          if (!mf.applied && elapsed >= mf.applyAt) {
+            mf.applied = true;
+            damageMonster(s);
+            damageMonster(s);
+            s.monsterCutFx = { x: mf.monsterX, y: mf.monsterY, t: MUERTE_CUT_FX_T };
+            setHud({ lives: s.lives, cd: Math.max(0, s.cd), status: s.status, level: s.level, monsterLives: s.monsterLives, monsterDefeated: s.monsterDefeated, energy: s.energy });
+          }
+        }
+        if (s.muerteT <= 0) {
+          s.muerteT = 0;
+          s.muerteFx = null;
+          s.faseArm = 0;
+          s.armDir = null;
+          s.armColor = null;
+        }
       } else {
         s.time += dt;
       }
 
-      if (s.status === "playing" && !rachaFrozen && !faseFrozen && !ladronFrozen) {
+      if (s.status === "playing" && !rachaFrozen && !faseFrozen && !ladronFrozen && !brasaFrozen && !tiempoFrozen && !motoFrozen && !electricoFrozen && !luzFrozen && !metalFrozen && !metalSuperFrozen && !muerteFrozen) {
         const ab = ABILITIES[ability];
         if (s.cd > 0) s.cd -= dt;
         if (s.invuln > 0) s.invuln -= dt;
         if (s.activeEffectT > 0) s.activeEffectT -= dt;
         if (s.stunT > 0) s.stunT -= dt;
         if (s.danceT > 0) s.danceT -= dt;
+        if (s.monsterBurnT > 0) s.monsterBurnT -= dt;
+        s.cloneMonsters.forEach((c) => { if (c.burnT > 0) c.burnT -= dt; });
         if (s.energy < 100) s.energy = Math.min(100, s.energy + dt * 13);
 
         // hold the ability button to charge a super version (fired later, once walls are known)
@@ -1613,20 +2348,11 @@ function ChaseGame({
             s.rachaChargeT = RACHA_CHARGE_T;
             s.rachaDur = ab.dur;
           }
-          if (ability === "sigilo") { s.activeEffectT = ab.dur; s.activeEffectAbility = "sigilo"; }
-          if (ability === "fuego") { s.activeEffectT = ab.dur; s.activeEffectAbility = "fuego"; }
-          if (ability === "sierra") { s.activeEffectT = ab.dur; s.activeEffectAbility = "sierra"; }
-          if (ability === "tiempo") {
-            const dxc = s.monster.x - s.player.x, dyc = s.monster.y - s.player.y;
-            const dnc = Math.hypot(dxc, dyc) || 1;
-            s.clockProj = { x: s.player.x, y: s.player.y, vx: (dxc / dnc) * 260, vy: (dyc / dnc) * 260, t: 0 };
-            s.freezeT = ab.dur;
-          }
-          if (ability === "clon") {
-            s.activeEffectT = ab.dur;
-            s.activeEffectAbility = "clon";
-            s.clonePos = { x: s.player.x, y: s.player.y };
-          }
+          if (ability === "muerte") startMuerte(s, false, null);
+          if (ability === "fuego") startBrasa(s, ab.dur);
+          if (ability === "metal") startMetal(s, ab.dur);
+          if (ability === "tiempo") startTiempo(s, ab.dur);
+          if (ability === "luz") startLuz(s);
           if (ability === "fase") {
             // el juego se pausa: el stickman extiende la mano, abre un portal hacia el otro lado, salta y reaparece
             const wallsNow = s.levelWalls.filter((_, i) => !s.destroyedWalls.has(i));
@@ -1656,10 +2382,11 @@ function ChaseGame({
             };
           }
           if (ability === "ladron") startLadron(s, false);
-          if (ability === "electrico" || ability === "mutar" || ability === "roquero") {
+          if (ability === "electrico") startElectrico(s);
+          if (ability === "mutar" || ability === "roquero") {
             const dx0 = s.monster.x - s.player.x, dy0 = s.monster.y - s.player.y;
             const d0 = Math.hypot(dx0, dy0) || 1;
-            const speed = ability === "electrico" ? 560 : ability === "roquero" ? 420 : 320;
+            const speed = ability === "roquero" ? 420 : 320;
             s.projectile = {
               x: s.player.x,
               y: s.player.y,
@@ -1702,17 +2429,13 @@ function ChaseGame({
             s.rachaChargeT = RACHA_CHARGE_T;
             s.rachaDur = ab2.dur;
           } else if (secondaryAbility === "fuego") {
-            s.activeEffectT = ab2.dur;
-            s.activeEffectAbility = "fuego";
+            startBrasa(s, ab2.dur);
           } else if (secondaryAbility === "mutar") {
             const dx0 = s.monster.x - s.player.x, dy0 = s.monster.y - s.player.y;
             const d0 = Math.hypot(dx0, dy0) || 1;
             s.projectile = { x: s.player.x, y: s.player.y, vx: (dx0 / d0) * 320, vy: (dy0 / d0) * 320, kind: "mutar", t: 0 };
           } else if (secondaryAbility === "tiempo") {
-            const dxc = s.monster.x - s.player.x, dyc = s.monster.y - s.player.y;
-            const dnc = Math.hypot(dxc, dyc) || 1;
-            s.clockProj = { x: s.player.x, y: s.player.y, vx: (dxc / dnc) * 260, vy: (dyc / dnc) * 260, t: 0 };
-            s.freezeT = ab2.dur;
+            startTiempo(s, ab2.dur);
           } else if (secondaryAbility === "laser") {
             const step2 = 6, maxRange2 = 260;
             let hx2 = s.player.x + s.facing.x * maxRange2, hy2 = s.player.y + s.facing.y * maxRange2;
@@ -1766,10 +2489,6 @@ function ChaseGame({
           s.spark.t -= dt;
           if (s.spark.t <= 0) s.spark = null;
         }
-        if (s.cloneVanish) {
-          s.cloneVanish.t -= dt;
-          if (s.cloneVanish.t <= 0) s.cloneVanish = null;
-        }
         if (s.notesFx) {
           s.notesFx.t -= dt;
           if (s.notesFx.t <= 0) s.notesFx = null;
@@ -1786,32 +2505,30 @@ function ChaseGame({
           s.portalFx.t -= dt;
           if (s.portalFx.t <= 0) s.portalFx = null;
         }
-        if (s.activeEffectAbility !== "clon" || s.activeEffectT <= 0) s.clonePos = null;
         const activeWalls = s.levelWalls.filter((_, i) => !s.destroyedWalls.has(i));
-        const shieldActive = s.activeEffectAbility === "sierra" && s.activeEffectT > 0;
+        const metalActive = s.activeEffectAbility === "metal" && s.activeEffectT > 0;
 
         // super ability: fires once the button has been held long enough, costs the whole energy bar
         const fireSuper = (targetId) => {
           const targetAb = ABILITIES[targetId];
           s.superFx = { x: s.player.x, y: s.player.y, t: 0.6, color: targetAb.accent };
-          const nearWalls = (radius) =>
-            activeWalls
+          const nearWalls = (radius, byDist) => {
+            const list = activeWalls
               .map((wl, i) => ({ wl, i, cx: wl.x + wl.w / 2, cy: wl.y + wl.h / 2 }))
-              .filter((w) => w.i > 2 && Math.hypot(w.cx - s.player.x, w.cy - s.player.y) < radius)
-              .slice(0, 6);
+              .filter((w) => w.i > 2 && Math.hypot(w.cx - s.player.x, w.cy - s.player.y) < radius);
+            if (byDist) list.sort((a, b) => Math.hypot(a.cx - s.player.x, a.cy - s.player.y) - Math.hypot(b.cx - s.player.x, b.cy - s.player.y));
+            return list.slice(0, 6);
+          };
 
           if (targetId === "viento") {
             s.slowAura = { x: s.player.x, y: s.player.y, r: 100, t: 5 };
-          } else if (targetId === "sigilo") {
-            s.phaseThroughT = 3;
+          } else if (targetId === "muerte") {
+            const near = nearWalls(220, true)[0] || null;
+            startMuerte(s, true, near);
           } else if (targetId === "tiempo") {
-            s.timeRushT = 4;
-            s.invuln = Math.max(s.invuln, 4);
-          } else if (targetId === "clon") {
-            s.decoyClones = Array.from({ length: 5 }, (_, i) => {
-              const ang = (i / 5) * Math.PI * 2;
-              return { x: s.player.x, y: s.player.y, vx: Math.cos(ang) * 55, vy: Math.sin(ang) * 55, t: 6 };
-            });
+            startMotoSuper(s);
+          } else if (targetId === "luz") {
+            startLuzSuper(s);
           } else if (targetId === "fase") {
             if (!s.monsterDefeated) {
               s.monster.x = s.monsterStartPos.x;
@@ -1821,17 +2538,10 @@ function ChaseGame({
               s.repathT = 0;
             }
           } else if (targetId === "electrico") {
-            const ang = Math.atan2(s.facing.y, s.facing.x);
-            s.electricWall = {
-              x: s.player.x + s.facing.x * 55,
-              y: s.player.y + s.facing.y * 55,
-              angle: ang + Math.PI / 2,
-              len: 90,
-              t: 3,
-              hitCd: {},
-            };
+            startElectricoSuper(s);
           } else if (targetId === "fuego") {
-            s.burningWalls = nearWalls(220).map((w) => ({ x: w.cx, y: w.cy, t: 6 }));
+            // súper Brasa: pausa total; las manos apuntan a las paredes cercanas y las envuelven en fuego
+            startBrasaSuper(s, nearWalls(220, true));
           } else if (targetId === "mutar") {
             s.vineWalls = nearWalls(220).map((w) => ({ x: w.cx, y: w.cy, t: 6 }));
           } else if (targetId === "roquero") {
@@ -1854,17 +2564,8 @@ function ChaseGame({
           } else if (targetId === "laser") {
             s.laserStormT = 4;
             s.laserStormTick = 0;
-          } else if (targetId === "sierra") {
-            const dx0 = s.monster.x - s.player.x, dy0 = s.monster.y - s.player.y;
-            const d0 = Math.hypot(dx0, dy0) || 1;
-            const baseAng = Math.atan2(dy0, dx0);
-            s.sawProjectiles = [-0.35, 0.35].map((off) => ({
-              x: s.player.x,
-              y: s.player.y,
-              vx: Math.cos(baseAng + off) * 340,
-              vy: Math.sin(baseAng + off) * 340,
-              t: 0,
-            }));
+          } else if (targetId === "metal") {
+            startMetalSuper(s);
           } else if (targetId === "tornado") {
             s.tornadoT = targetAb.dur;
             const backAng = Math.atan2(-s.facing.y, -s.facing.x);
@@ -1945,20 +2646,32 @@ function ChaseGame({
           if (s.electricWall.t <= 0) {
             s.electricWall = null;
           } else {
-            const ew = s.electricWall;
-            const hx = Math.cos(ew.angle) * ew.len, hy = Math.sin(ew.angle) * ew.len;
-            const checkHit = (tx, ty) => {
-              const dx = tx - ew.x, dy = ty - ew.y;
-              const proj = Math.max(-1, Math.min(1, (dx * hx + dy * hy) / (ew.len * ew.len)));
-              const cx = ew.x + hx * proj, cy = ew.y + hy * proj;
-              return Math.hypot(tx - cx, ty - cy) < 14;
+            // pared eléctrica circular alrededor del stickman: bloquea al monstruo (lo empuja hacia afuera)
+            // y lo paraliza si la toca
+            const R = ELECTRICO_WALL_R;
+            const pushOut = (tx, ty) => {
+              const dx = tx - s.player.x, dy = ty - s.player.y;
+              const d = Math.hypot(dx, dy) || 1;
+              if (d >= R) return null;
+              return {
+                x: Math.max(MONSTER_R, Math.min(WORLD_W - MONSTER_R, s.player.x + (dx / d) * R)),
+                y: Math.max(MONSTER_R, Math.min(WORLD_H - MONSTER_R, s.player.y + (dy / d) * R)),
+              };
             };
-            if (!s.monsterDefeated && checkHit(s.monster.x, s.monster.y)) {
-              if (s.stunT <= 0) damageMonster(s);
-              s.stunT = Math.max(s.stunT, 2.4);
+            if (!s.monsterDefeated) {
+              const hit = pushOut(s.monster.x, s.monster.y);
+              if (hit) {
+                s.monster.x = hit.x; s.monster.y = hit.y;
+                if (s.stunT <= 0) damageMonster(s);
+                s.stunT = Math.max(s.stunT, 2.4);
+              }
             }
             s.cloneMonsters.forEach((c) => {
-              if (checkHit(c.x, c.y)) c.stunT = Math.max(c.stunT, 2.4);
+              const hit = pushOut(c.x, c.y);
+              if (hit) {
+                c.x = hit.x; c.y = hit.y;
+                c.stunT = Math.max(c.stunT, 2.4);
+              }
             });
           }
         }
@@ -1966,12 +2679,17 @@ function ChaseGame({
           s.burningWalls = s.burningWalls.filter((bw) => {
             bw.t -= dt;
             if (bw.t <= 0) return false;
-            if (!s.monsterDefeated && Math.hypot(bw.x - s.monster.x, bw.y - s.monster.y) < 34) {
+            // la pared arde entera: quema al monstruo que toque cualquier parte de ella
+            const wallDist = (mx, my) => bw.wl
+              ? Math.hypot(mx - Math.max(bw.wl.x, Math.min(mx, bw.wl.x + bw.wl.w)), my - Math.max(bw.wl.y, Math.min(my, bw.wl.y + bw.wl.h)))
+              : Math.hypot(bw.x - mx, bw.y - my) - 20;
+            if (!s.monsterDefeated && wallDist(s.monster.x, s.monster.y) < MONSTER_R + 10) {
               if (s.stunT <= 0) damageMonster(s);
               s.stunT = Math.max(s.stunT, 2.2);
+              s.monsterBurnT = Math.max(s.monsterBurnT, 1.0);
             }
             s.cloneMonsters.forEach((c) => {
-              if (Math.hypot(bw.x - c.x, bw.y - c.y) < 34) c.stunT = Math.max(c.stunT, 2.2);
+              if (wallDist(c.x, c.y) < MONSTER_R * 0.86 + 10) { c.stunT = Math.max(c.stunT, 2.2); c.burnT = 1.0; }
             });
             return true;
           });
@@ -1990,44 +2708,10 @@ function ChaseGame({
             return true;
           });
         }
-        if (s.decoyClones.length > 0) {
-          s.decoyClones = s.decoyClones.filter((dc) => {
-            dc.t -= dt;
-            dc.x += dc.vx * dt;
-            dc.y += dc.vy * dt;
-            dc.vx += (Math.random() - 0.5) * 40 * dt;
-            dc.vy += (Math.random() - 0.5) * 40 * dt;
-            dc.x = Math.max(PLAYER_R, Math.min(WORLD_W - PLAYER_R, dc.x));
-            dc.y = Math.max(PLAYER_R, Math.min(WORLD_H - PLAYER_R, dc.y));
-            if (dc.t <= 0) return false;
-            const dM = !s.monsterDefeated && Math.hypot(dc.x - s.monster.x, dc.y - s.monster.y) < PLAYER_R + MONSTER_R - 4;
-            const dC = s.cloneMonsters.some((c) => Math.hypot(dc.x - c.x, dc.y - c.y) < PLAYER_R + MONSTER_R * 0.86 - 4);
-            if (dM || dC) {
-              s.cloneVanish = { x: dc.x, y: dc.y, t: 0.5 };
-              return false;
-            }
-            return true;
-          });
-        }
-        if (s.sawProjectiles.length > 0) {
-          s.sawProjectiles = s.sawProjectiles.filter((sp) => {
-            sp.t += dt;
-            sp.x += sp.vx * dt;
-            sp.y += sp.vy * dt;
-            const hitWallSp = activeWalls.some(
-              (wl) => sp.x > wl.x && sp.x < wl.x + wl.w && sp.y > wl.y && sp.y < wl.y + wl.h
-            );
-            if (!s.monsterDefeated && Math.hypot(sp.x - s.monster.x, sp.y - s.monster.y) < MONSTER_R + 8) {
-              if (s.stunT <= 0) damageMonster(s);
-              s.stunT = Math.max(s.stunT, 2.6);
-              return false;
-            }
-            const hitClone = s.cloneMonsters.find((c) => Math.hypot(sp.x - c.x, sp.y - c.y) < MONSTER_R * 0.86 + 8);
-            if (hitClone) {
-              hitClone.stunT = Math.max(hitClone.stunT, 2.6);
-              return false;
-            }
-            return !(hitWallSp || sp.t > 2.2 || sp.x < 0 || sp.x > WORLD_W || sp.y < 0 || sp.y > WORLD_H);
+        if (s.metalBlobs.length > 0) {
+          s.metalBlobs = s.metalBlobs.filter((mb) => {
+            mb.t -= dt;
+            return mb.t > 0;
           });
         }
         if (s.tornadoProjs.length > 0) {
@@ -2084,8 +2768,8 @@ function ChaseGame({
           if (s.tornadoBurst.t <= 0) s.tornadoBurst = null;
         }
 
-        // sierra shield clears nearby animals
-        if (shieldActive && s.levelAnimals.length > 0) {
+        // el blindaje de metal aparta a los animales cercanos
+        if (metalActive && s.levelAnimals.length > 0) {
           s.levelAnimals = s.levelAnimals.filter(
             (a) => Math.hypot(a.x - s.player.x, a.y - s.player.y) > 22
           );
@@ -2131,6 +2815,10 @@ function ChaseGame({
           s.defeatFx.t -= dt;
           if (s.defeatFx.t <= 0) s.defeatFx = null;
         }
+        if (s.monsterCutFx) {
+          s.monsterCutFx.t -= dt;
+          if (s.monsterCutFx.t <= 0) s.monsterCutFx = null;
+        }
 
         // monster's black fireball in flight
         if (s.monsterFireball) {
@@ -2143,16 +2831,32 @@ function ChaseGame({
           );
           const dFb = Math.hypot(fb.x - s.player.x, fb.y - s.player.y);
           if (dFb < PLAYER_R + 8) {
-            if (s.invuln <= 0 && !shieldActive) {
-              s.lives -= 1;
-              s.invuln = 1.4;
-              const dxk = s.player.x - fb.x, dyk = s.player.y - fb.y;
-              const dk = Math.hypot(dxk, dyk) || 1;
-              s.player.x = Math.max(PLAYER_R, Math.min(WORLD_W - PLAYER_R, s.player.x + (dxk / dk) * 22));
-              s.player.y = Math.max(PLAYER_R, Math.min(WORLD_H - PLAYER_R, s.player.y + (dyk / dk) * 22));
-              if (s.lives <= 0) s.status = "lost";
+            if (metalActive) {
+              // el blindaje de metal refleja el ataque de vuelta hacia el monstruo
+              if (!fb.reflected) {
+                fb.reflected = true;
+                fb.vx = -fb.vx;
+                fb.vy = -fb.vy;
+                fb.t = 0;
+              }
+            } else {
+              if (s.invuln <= 0) {
+                s.lives -= 1;
+                s.invuln = 1.4;
+                const dxk = s.player.x - fb.x, dyk = s.player.y - fb.y;
+                const dk = Math.hypot(dxk, dyk) || 1;
+                s.player.x = Math.max(PLAYER_R, Math.min(WORLD_W - PLAYER_R, s.player.x + (dxk / dk) * 22));
+                s.player.y = Math.max(PLAYER_R, Math.min(WORLD_H - PLAYER_R, s.player.y + (dyk / dk) * 22));
+                if (s.lives <= 0) s.status = "lost";
+              }
+              s.fireballBurst = { x: fb.x, y: fb.y, t: 0.5 };
+              s.monsterFireball = null;
             }
-            s.fireballBurst = { x: fb.x, y: fb.y, t: 0.5 };
+          } else if (fb.reflected && !s.monsterDefeated && Math.hypot(fb.x - s.monster.x, fb.y - s.monster.y) < MONSTER_R + 8) {
+            // el rayo reflejado alcanza al monstruo
+            if (s.stunT <= 0) damageMonster(s);
+            s.stunT = Math.max(s.stunT, 2.2);
+            s.fireballBurst = { x: fb.x, y: fb.y, t: 0.4 };
             s.monsterFireball = null;
           } else if (fbHitWall || fb.t > 2.6 || fb.x < 0 || fb.x > WORLD_W || fb.y < 0 || fb.y > WORLD_H) {
             s.fireballBurst = { x: fb.x, y: fb.y, t: 0.4 };
@@ -2215,7 +2919,7 @@ function ChaseGame({
                 r.t = 0;
                 return true;
               }
-              if (s.invuln <= 0 && !shieldActive) {
+              if (s.invuln <= 0 && !metalActive) {
                 s.lives -= 1;
                 s.invuln = 1.4;
                 const dxk = s.player.x - r.x, dyk = s.player.y - r.y;
@@ -2244,7 +2948,7 @@ function ChaseGame({
           if (s.tripleT <= 0 && !s.cloneMonsters.some((c) => c.permanent)) {
             s.cloneMonsters = [];
           } else {
-            const seesPlayerNow = !(s.activeEffectAbility === "sigilo" && s.activeEffectT > 0);
+            const seesPlayerNow = true;
             s.cloneMonsters.forEach((c) => {
               if (c.stunT > 0 || s.freezeT > 0) {
                 if (c.stunT > 0) c.stunT -= dt;
@@ -2302,6 +3006,7 @@ function ChaseGame({
               c.x = Math.max(MONSTER_R, Math.min(WORLD_W - MONSTER_R, c.x));
               c.y = Math.max(MONSTER_R, Math.min(WORLD_H - MONSTER_R, c.y));
               activeWalls.forEach((wl) => circleRectPush(c, MONSTER_R * 0.86, wl));
+              s.metalBlobs.forEach((mb) => circleRectPush(c, MONSTER_R * 0.86, { x: mb.x - METAL_BLOB_R, y: mb.y - METAL_BLOB_R, w: METAL_BLOB_R * 2, h: METAL_BLOB_R * 2 }));
 
               if (c.fireball) {
                 const fb = c.fireball;
@@ -2313,7 +3018,7 @@ function ChaseGame({
                 );
                 const dFbC = Math.hypot(fb.x - s.player.x, fb.y - s.player.y);
                 if (dFbC < PLAYER_R + 8) {
-                  if (s.invuln <= 0 && !shieldActive) {
+                  if (s.invuln <= 0 && !metalActive) {
                     s.lives -= 1;
                     s.invuln = 1.4;
                     const dxk = s.player.x - fb.x, dyk = s.player.y - fb.y;
@@ -2331,23 +3036,23 @@ function ChaseGame({
           }
         }
 
-        // sierra shield can stun whatever it touches
-        if (shieldActive && !s.sierraHitApplied) {
+        // el blindaje de metal aturde a lo que lo toque (refleja el ataque)
+        if (metalActive && !s.metalHitApplied) {
           const dPS = Math.hypot(s.monster.x - s.player.x, s.monster.y - s.player.y);
           if (!s.monsterDefeated && dPS < 40) {
             if (s.stunT <= 0) damageMonster(s);
             s.stunT = Math.max(s.stunT, 3);
-            s.sierraHitApplied = true;
+            s.metalHitApplied = true;
           }
           s.cloneMonsters.forEach((c) => {
             const dCS = Math.hypot(c.x - s.player.x, c.y - s.player.y);
             if (dCS < 40) {
               c.stunT = Math.max(c.stunT, 3);
-              s.sierraHitApplied = true;
+              s.metalHitApplied = true;
             }
           });
         }
-        if (!shieldActive) s.sierraHitApplied = false;
+        if (!metalActive) s.metalHitApplied = false;
 
         // movement — keyboard + touch joystick combined
         let mx = joy.current.x, my = joy.current.y;
@@ -2361,7 +3066,7 @@ function ChaseGame({
         if (isMoving) {
           const len = Math.hypot(mx, my) || 1;
           s.facing = { x: mx / len, y: my / len };
-          const speed = 126 * (s.dashT > 0 ? 2.1 : 1) * (s.tornadoT > 0 ? 2.8 : 1) * (s.timeRushT > 0 ? 2.4 : 1) * (slowed ? PUDDLE_SLOW : 1);
+          const speed = 126 * (s.dashT > 0 ? 2.1 : 1) * (s.tornadoT > 0 ? 2.8 : 1) * (s.timeRushT > 0 ? 2.4 : 1) * (metalActive ? METAL_SPEED_MULT : 1) * (slowed ? PUDDLE_SLOW : 1);
           s.player.x += (mx / len) * speed * dt;
           s.player.y += (my / len) * speed * dt;
         }
@@ -2383,7 +3088,7 @@ function ChaseGame({
         }
 
         // spikes hazard
-        if (s.invuln <= 0 && !shieldActive) {
+        if (s.invuln <= 0 && !metalActive) {
           const pRect = { x: s.player.x - PLAYER_R, y: s.player.y - PLAYER_R, w: PLAYER_R * 2, h: PLAYER_R * 2 };
           const spike = s.levelSpikes.find((sp) => rectsOverlap(pRect, sp));
           if (spike) {
@@ -2404,7 +3109,7 @@ function ChaseGame({
           let goalX = s.player.x, goalY = s.player.y;
           let mSpeed = monsterBaseSpeedForLevel(s.level) + Math.min(s.time * 0.9, 55);
           mSpeed = Math.max(60, mSpeed);
-          const seesPlayer = !(s.activeEffectAbility === "sigilo" && s.activeEffectT > 0);
+          const seesPlayer = true;
           if (!seesPlayer) {
             goalX = s.monster._lastSeenX ?? s.monster.x;
             goalY = s.monster._lastSeenY ?? s.monster.y;
@@ -2495,15 +3200,21 @@ function ChaseGame({
           s.monster.x = Math.max(MONSTER_R, Math.min(WORLD_W - MONSTER_R, s.monster.x));
           s.monster.y = Math.max(MONSTER_R, Math.min(WORLD_H - MONSTER_R, s.monster.y));
           activeWalls.forEach((wl) => circleRectPush(s.monster, MONSTER_R, wl));
+          s.metalBlobs.forEach((mb) => circleRectPush(s.monster, MONSTER_R, { x: mb.x - METAL_BLOB_R, y: mb.y - METAL_BLOB_R, w: METAL_BLOB_R * 2, h: METAL_BLOB_R * 2 }));
         }
 
-        // fire trail damage
-        if (s.activeEffectAbility === "fuego" && s.activeEffectT > 0 && !s.monsterDefeated) {
-          const d = Math.hypot(s.monster.x - s.player.x, s.monster.y - s.player.y);
-          if (d < 60) {
+        // bola de fuego: el monstruo que se acerca queda quemado (el radio se encoge cuando el fuego se disipa)
+        if (s.activeEffectAbility === "fuego" && s.activeEffectT > 0) {
+          const ballK = smooth01(Math.min(1, s.activeEffectT / BRASA_FADE_T));
+          const burnR = BRASA_BURN_R * (0.55 + 0.45 * ballK);
+          if (!s.monsterDefeated && Math.hypot(s.monster.x - s.player.x, s.monster.y - s.player.y) < burnR) {
             if (s.stunT <= 0) damageMonster(s);
             s.stunT = Math.max(s.stunT, 0.4);
+            s.monsterBurnT = Math.max(s.monsterBurnT, 1.0);
           }
+          s.cloneMonsters.forEach((c) => {
+            if (Math.hypot(c.x - s.player.x, c.y - s.player.y) < burnR * 0.92) { c.stunT = Math.max(c.stunT, 0.4); c.burnT = 1.0; }
+          });
         }
 
         // collisions
@@ -2512,26 +3223,19 @@ function ChaseGame({
           ...s.cloneMonsters.filter((c) => c.stunT <= 0).map((c) => ({ x: c.x, y: c.y, r: MONSTER_R * 0.86 })),
         ];
         const caughtBy = threats.find((t) => Math.hypot(t.x - s.player.x, t.y - s.player.y) < PLAYER_R + t.r - 4);
-        const stealthSafe = s.activeEffectAbility === "sigilo" && s.activeEffectT > 0;
-        if (caughtBy && s.invuln <= 0 && !stealthSafe && !shieldActive) {
-          if (s.activeEffectAbility === "clon" && s.activeEffectT > 0) {
-            s.cloneVanish = { x: s.player.x - s.facing.x * 16, y: s.player.y - s.facing.y * 16, t: 0.5 };
-            s.activeEffectT = 0;
-            s.clonePos = null;
-            s.invuln = 1.4;
-          } else {
-            if (ability === "ladron") {
-              // el monstruo lo toca: queda cortado por la mitad hasta que use el robo
-              s.ladronCut = true;
-              s.cutFx = { x: s.player.x, y: s.player.y, t: LADRON_CUT_FX_T, fx: s.facing.x, fy: s.facing.y, moving: !!s.moving };
-            }
-            s.lives -= 1;
-            s.invuln = 1.6;
-            s.player = { ...s.startPos };
-            s.monster = { ...s.monsterStartPos };
-            s.cloneMonsters = [];
-            if (s.lives <= 0) s.status = "lost";
+        const stealthSafe = false;
+        if (caughtBy && s.invuln <= 0 && !stealthSafe && !metalActive) {
+          if (ability === "ladron") {
+            // el monstruo lo toca: queda cortado por la mitad hasta que use el robo
+            s.ladronCut = true;
+            s.cutFx = { x: s.player.x, y: s.player.y, t: LADRON_CUT_FX_T, fx: s.facing.x, fy: s.facing.y, moving: !!s.moving };
           }
+          s.lives -= 1;
+          s.invuln = 1.6;
+          s.player = { ...s.startPos };
+          s.monster = { ...s.monsterStartPos };
+          s.cloneMonsters = [];
+          if (s.lives <= 0) s.status = "lost";
         }
         const exitRect = { x: s.player.x - PLAYER_R, y: s.player.y - PLAYER_R, w: PLAYER_R * 2, h: PLAYER_R * 2 };
         if (rectsOverlap(exitRect, EXIT) && s.status !== "won") {
@@ -2601,6 +3305,22 @@ function ChaseGame({
       camX = camFor(s.player.x + (s.monster.x - s.player.x) * ltl.pan * panMax);
     }
 
+    // Muerte: durante el corte la cámara acompaña el salto hacia el monstruo; en la pared de la súper, se centra entre ambos
+    const muerteOn = s.muerteT > 0 && !!s.muerteFx;
+    const muertePh = muerteOn ? muertePhase(s.muerteFx, s.muerteT) : null;
+    if (muerteOn && muertePh.phase === "strike") {
+      const mtl = muerteStrikeTimeline(muertePh.p);
+      const mdist = Math.abs(s.monster.x - s.player.x);
+      const mPanMax = mdist < VIEW_W * 0.55 ? 0.5 : 1;
+      camX = camFor(s.player.x + (s.monster.x - s.player.x) * mtl.pan * mPanMax);
+    } else if (muerteOn && muertePh.phase === "wall" && s.muerteFx.wall) {
+      camX = camFor((s.player.x + s.muerteFx.wall.touchX) / 2);
+    }
+
+    // Brasa: pausa total, la cámara se centra en el stickman
+    const brasaOn = s.brasaT > 0 && !!s.brasaFx;
+    const brasaP = brasaOn ? 1 - s.brasaT / (s.brasaFx.superMode ? BRASA_SUPER_T : BRASA_T) : 0;
+
     ctx.save();
     // Fase: acercamiento suave a los dos portales durante la pausa
     if (faseOn) {
@@ -2626,6 +3346,79 @@ function ChaseGame({
       ctx.scale(rz, rz);
       ctx.translate(-pvx, -pvy);
     }
+    // Tiempo: pequeño acercamiento al stickman mientras se voltea y dispara la esfera
+    if (s.tiempoT > 0) {
+      const pz = 1 - s.tiempoT / TIEMPO_T;
+      const kz = pz < 0.5 ? pz / 0.5 : 1 - (pz - 0.5) / 0.5;
+      const tz = 1 + 0.22 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(tz, tz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Súper Tiempo: acercamiento al stickman mientras salta y sube a la motocicleta
+    if (s.motoT > 0) {
+      const pz = 1 - s.motoT / MOTO_T;
+      const kz = pz < 0.55 ? pz / 0.55 : 1 - (pz - 0.55) / 0.45;
+      const mz = 1 + 0.25 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(mz, mz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Descarga: pequeño acercamiento al stickman durante la lluvia de rayos o el golpe de mano de la súper
+    if (s.electricoT > 0) {
+      const eT = s.electricoFx && s.electricoFx.superMode ? ELECTRICO_SUPER_T : ELECTRICO_T;
+      const pz = 1 - s.electricoT / eT;
+      const kz = pz < 0.5 ? pz / 0.5 : 1 - (pz - 0.5) / 0.5;
+      const ez = 1 + 0.24 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(ez, ez);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Luz: pequeño acercamiento al stickman mientras se carga y lanza el rayo, o brilla y se teletransporta
+    if (s.luzT > 0) {
+      const eT = s.luzFx && s.luzFx.superMode ? LUZ_SUPER_T : LUZ_T;
+      const pz = 1 - s.luzT / eT;
+      const kz = pz < 0.5 ? pz / 0.5 : 1 - (pz - 0.5) / 0.5;
+      const lz = 1 + 0.24 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(lz, lz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Metal: pequeño acercamiento al stickman mientras la capa de metal lo recubre
+    if (s.metalT > 0) {
+      const pz = 1 - s.metalT / METAL_T;
+      const kz = pz < 0.5 ? pz / 0.5 : 1 - (pz - 0.5) / 0.5;
+      const mz = 1 + 0.22 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(mz, mz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Súper Metal: acercamiento al stickman mientras apunta las manos y dispara los rayos
+    if (s.metalSuperT > 0) {
+      const pz = 1 - s.metalSuperT / METAL_SUPER_T;
+      const kz = pz < 0.5 ? pz / 0.5 : 1 - (pz - 0.5) / 0.5;
+      const mz = 1 + 0.24 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(mz, mz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Muerte: pequeño acercamiento al stickman durante toda la pausa (pared, brillo y corte)
+    if (muerteOn) {
+      const mTotal = s.muerteFx.total || 1;
+      const mp = 1 - s.muerteT / mTotal;
+      const kz = mp < 0.5 ? mp / 0.5 : 1 - (mp - 0.5) / 0.5;
+      const mz = 1 + 0.28 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(mz, mz);
+      ctx.translate(-pvx, -pvy);
+    }
     // Ladrón: acercamiento al stickman (unión) y al cargar el rayo
     if (ladOn) {
       let lz = 1;
@@ -2639,6 +3432,17 @@ function ChaseGame({
       ctx.translate(lvx, lvy);
       ctx.scale(lz, lz);
       ctx.translate(-lvx, -lvy);
+    }
+    // Brasa: la cámara se acerca y CENTRA al stickman (sin dejar nunca al descubierto lo que hay fuera del mapa)
+    if (brasaOn) {
+      const bt = s.brasaFx.superMode ? brasaSuperTimeline(brasaP) : brasaTimeline(brasaP);
+      const zz = 1 + (s.brasaFx.superMode ? 0.45 : 0.5) * bt.zoom;
+      const Px = s.player.x - camX, Py = s.player.y;
+      const cxT = Math.max(VIEW_W - zz * (VIEW_W - Px), Math.min(zz * Px, Px + (VIEW_W / 2 - Px) * bt.zoom));
+      const cyT = Math.max(VIEW_H - zz * (VIEW_H - Py), Math.min(zz * Py, Py + (VIEW_H / 2 - Py) * bt.zoom));
+      ctx.translate(cxT, cyT);
+      ctx.scale(zz, zz);
+      ctx.translate(-Px, -Py);
     }
     ctx.translate(-camX, 0);
 
@@ -3256,56 +4060,25 @@ function ChaseGame({
     }
 
     if (s.electricWall) {
-      const ew = s.electricWall;
-      const hx = Math.cos(ew.angle) * ew.len, hy = Math.sin(ew.angle) * ew.len;
-      ctx.strokeStyle = ABILITIES.electrico.accent;
-      ctx.lineWidth = 5;
-      ctx.globalAlpha = 0.5 + 0.5 * Math.sin(s.time * 30);
-      ctx.beginPath();
-      ctx.moveTo(ew.x - hx, ew.y - hy);
-      ctx.lineTo(ew.x + hx, ew.y + hy);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
+      // pared eléctrica circular (súper Descarga): rodea al stickman y se desvanece en el último tramo
+      const clock = s.rachaClock || 0;
+      const k = Math.min(1, s.electricWall.t / 0.4);
+      const R = ELECTRICO_WALL_R;
+      const n = 14;
+      for (let i = 0; i < n; i++) {
+        const a0 = (i / n) * Math.PI * 2 + clock * 0.6;
+        const a1 = ((i + 1) / n) * Math.PI * 2 + clock * 0.6;
+        const x1 = s.player.x + Math.cos(a0) * R, y1 = s.player.y + Math.sin(a0) * R;
+        const x2 = s.player.x + Math.cos(a1) * R, y2 = s.player.y + Math.sin(a1) * R;
+        drawLightningBolt(ctx, x1, y1, x2, y2, i * 7 + Math.floor(clock * 6), (0.55 + 0.45 * Math.sin(clock * 22 + i)) * k, ABILITIES.electrico.accent, 2.4);
+      }
     }
 
+    // paredes en llamas (súper Brasa): envueltas por completo; al final las llamas se apagan
     s.burningWalls.forEach((bw) => {
-      const grd = ctx.createRadialGradient(bw.x, bw.y, 1, bw.x, bw.y, 30);
-      grd.addColorStop(0, "rgba(255,170,50,0.35)");
-      grd.addColorStop(1, "rgba(232,70,15,0)");
-      ctx.fillStyle = grd;
-      ctx.beginPath();
-      ctx.arc(bw.x, bw.y, 30, 0, Math.PI * 2);
-      ctx.fill();
-
-      const n = 5;
-      for (let i = 0; i < n; i++) {
-        const off = (i - (n - 1) / 2) * 8;
-        const wob = Math.sin(s.time * 10 + i * 1.7 + bw.x) * 0.5 + 0.5;
-        const h = 12 + wob * 9;
-        const flick = Math.sin(s.time * 15 + i * 2) * 3;
-        const fx = bw.x + off, fy = bw.y + 10;
-        const g2 = ctx.createLinearGradient(fx, fy, fx + flick, fy - h);
-        g2.addColorStop(0, "rgba(200,40,10,0.95)");
-        g2.addColorStop(0.5, "rgba(255,150,40,0.9)");
-        g2.addColorStop(1, "rgba(255,220,110,0.2)");
-        ctx.fillStyle = g2;
-        ctx.beginPath();
-        ctx.moveTo(fx - 3.2, fy);
-        ctx.quadraticCurveTo(fx + flick - 4, fy - h * 0.5, fx + flick * 0.5, fy - h);
-        ctx.quadraticCurveTo(fx + flick + 4, fy - h * 0.5, fx + 3.2, fy);
-        ctx.closePath();
-        ctx.fill();
-      }
-      // rising embers off the burning wall
-      for (let i = 0; i < 3; i++) {
-        const ph = (s.time * 1.2 + i * 0.5 + bw.y * 0.01) % 1;
-        const ex = bw.x + Math.sin(s.time * 4 + i) * 10;
-        const ey = bw.y - ph * 30;
-        ctx.fillStyle = `rgba(255,200,90,${0.75 * (1 - ph)})`;
-        ctx.beginPath();
-        ctx.arc(ex, ey, 1.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      const wl = bw.wl || { x: bw.x - 12, y: bw.y - 12, w: 24, h: 24 };
+      if (wl.x + wl.w < camX - 40 || wl.x > camX + VIEW_W + 40) return;
+      drawWallFire(ctx, wl, s.rachaClock || 0, Math.min(1, bw.t / BRASA_WALL_FADE), null);
     });
 
     s.vineWalls.forEach((vw) => {
@@ -3347,38 +4120,27 @@ function ChaseGame({
       }
     });
 
-    s.decoyClones.forEach((dc) => {
-      ctx.globalAlpha = 0.55 + Math.sin(s.time * 6) * 0.1;
-      ctx.strokeStyle = ABILITIES.clon.accent;
-      ctx.fillStyle = ABILITIES.clon.accent;
-      ctx.lineWidth = 2;
-      ctx.lineCap = "round";
-      ctx.beginPath(); ctx.arc(dc.x, dc.y - 10, 4, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(dc.x, dc.y - 6); ctx.lineTo(dc.x, dc.y + 2);
-      ctx.moveTo(dc.x, dc.y - 4); ctx.lineTo(dc.x - 4, dc.y);
-      ctx.moveTo(dc.x, dc.y - 4); ctx.lineTo(dc.x + 4, dc.y);
-      ctx.moveTo(dc.x, dc.y + 2); ctx.lineTo(dc.x - 3, dc.y + 9);
-      ctx.moveTo(dc.x, dc.y + 2); ctx.lineTo(dc.x + 3, dc.y + 9);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    });
-
-    s.sawProjectiles.forEach((sp) => {
+    s.metalBlobs.forEach((mb) => {
+      const fadeK = mb.t < 1 ? mb.t : 1;
       ctx.save();
-      ctx.translate(sp.x, sp.y);
-      ctx.rotate(sp.t * 22);
-      ctx.fillStyle = "#B7BEC4";
-      ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = fadeK;
+      ctx.translate(mb.x, mb.y);
+      ctx.rotate(mb.seed * 6.28);
+      ctx.fillStyle = "#8A93A0";
+      ctx.beginPath();
+      for (let i = 0; i < 7; i++) {
+        const a3 = (i / 7) * Math.PI * 2;
+        const rr = METAL_BLOB_R * (0.75 + 0.35 * hsh(mb.seed * 97 + i * 13));
+        const px2 = Math.cos(a3) * rr, py2 = Math.sin(a3) * rr;
+        if (i === 0) ctx.moveTo(px2, py2); else ctx.lineTo(px2, py2);
+      }
+      ctx.closePath();
+      ctx.fill();
       ctx.strokeStyle = "#4A4E52";
       ctx.lineWidth = 1.4;
-      for (let i = 0; i < 8; i++) {
-        const a2 = (i / 8) * Math.PI * 2;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(a2) * 6, Math.sin(a2) * 6);
-        ctx.lineTo(Math.cos(a2) * 10, Math.sin(a2) * 10);
-        ctx.stroke();
-      }
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.beginPath(); ctx.ellipse(-METAL_BLOB_R * 0.25, -METAL_BLOB_R * 0.3, METAL_BLOB_R * 0.3, METAL_BLOB_R * 0.16, -0.4, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     });
 
@@ -3457,82 +4219,7 @@ function ChaseGame({
         ctx.beginPath(); ctx.arc(p.x, p.y, 9, 0, Math.PI * 2); ctx.fill();
       }
     }
-    // fire trail — living flames licking up around the player, with rising embers
-    if (s.activeEffectAbility === "fuego" && s.activeEffectT > 0) {
-      const grd = ctx.createRadialGradient(s.player.x, s.player.y, 2, s.player.x, s.player.y, 58);
-      grd.addColorStop(0, "rgba(255,190,60,0.35)");
-      grd.addColorStop(1, "rgba(232,70,15,0)");
-      ctx.fillStyle = grd;
-      ctx.beginPath(); ctx.arc(s.player.x, s.player.y, 58, 0, Math.PI * 2); ctx.fill();
-
-      const flameCount = 7;
-      for (let i = 0; i < flameCount; i++) {
-        const ang = (i / flameCount) * Math.PI * 2 + s.time * 0.6;
-        const wob = Math.sin(s.time * 9 + i * 2) * 0.5 + 0.5;
-        const baseR = 14 + wob * 6;
-        const fx = s.player.x + Math.cos(ang) * baseR;
-        const fy = s.player.y + Math.sin(ang) * baseR * 0.6;
-        const h = 10 + wob * 10;
-        const flick = Math.sin(s.time * 16 + i) * 2;
-        const flameGrd = ctx.createLinearGradient(fx, fy, fx + flick, fy - h);
-        flameGrd.addColorStop(0, "rgba(232,70,15,0.9)");
-        flameGrd.addColorStop(0.55, "rgba(255,150,40,0.85)");
-        flameGrd.addColorStop(1, "rgba(255,224,120,0.15)");
-        ctx.fillStyle = flameGrd;
-        ctx.beginPath();
-        ctx.moveTo(fx - 3, fy);
-        ctx.quadraticCurveTo(fx + flick - 4, fy - h * 0.55, fx + flick * 0.5, fy - h);
-        ctx.quadraticCurveTo(fx + flick + 4, fy - h * 0.55, fx + 3, fy);
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      for (let i = 0; i < 5; i++) {
-        const ph = (s.time * 1.4 + i * 0.37) % 1;
-        const ang = i * 2.1;
-        const ex = s.player.x + Math.cos(ang) * (10 + ph * 14);
-        const ey = s.player.y - ph * 34 + Math.sin(s.time * 3 + i) * 3;
-        ctx.fillStyle = `rgba(255,${190 + Math.floor(ph * 40)},80,${0.8 * (1 - ph)})`;
-        ctx.beginPath();
-        ctx.arc(ex, ey, 1.6 * (1 - ph * 0.5), 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    // decoy clone, drawn as a faded double before the real player
-    if (s.clonePos) {
-      ctx.globalAlpha = 0.5 + Math.sin(s.time * 6) * 0.1;
-      ctx.strokeStyle = ABILITIES.clon.accent;
-      ctx.fillStyle = ABILITIES.clon.accent;
-      ctx.lineWidth = 2.2;
-      ctx.lineCap = "round";
-      const cx = s.clonePos.x, cy = s.clonePos.y;
-      ctx.beginPath(); ctx.arc(cx, cy - 15, 5.5, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - 9.5); ctx.lineTo(cx, cy + 2);
-      ctx.moveTo(cx, cy - 7); ctx.lineTo(cx - 6.5, cy + 2);
-      ctx.moveTo(cx, cy - 7); ctx.lineTo(cx + 6.5, cy + 2);
-      ctx.moveTo(cx, cy + 2); ctx.lineTo(cx - 4.5, cy + 15);
-      ctx.moveTo(cx, cy + 2); ctx.lineTo(cx + 4.5, cy + 15);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-
-    // burst where a clone was sacrificed
-    if (s.cloneVanish) {
-      ctx.strokeStyle = ABILITIES.clon.accent;
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = Math.min(1, s.cloneVanish.t / 0.5);
-      for (let i = 0; i < 8; i++) {
-        const ang = (i / 8) * Math.PI * 2;
-        const r2 = 6 + (1 - s.cloneVanish.t / 0.5) * 18;
-        ctx.beginPath();
-        ctx.moveTo(s.cloneVanish.x, s.cloneVanish.y);
-        ctx.lineTo(s.cloneVanish.x + Math.cos(ang) * r2, s.cloneVanish.y + Math.sin(ang) * r2);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-    }
+    // (la bola de fuego de Brasa se dibuja junto con el jugador: ver drawPlayer)
 
     // portales de Fase cerrándose (el juego ya corrió de nuevo; el stickman queda delante)
     if (s.portalFx) {
@@ -3544,8 +4231,11 @@ function ChaseGame({
       drawFasePortal(ctx, pf.ex, pf.ey, pf.dx, pf.dy, oc, s.rachaClock || 0, kc);
     }
 
-    // player (durante la carga de Racha y la pausa de Fase se dibuja al final, encima del oscurecido)
-    if (!(s.rachaChargeT > 0) && !(s.faseT > 0) && !(s.ladronT > 0)) drawPlayer(ctx, s, abilityId);
+    // Súper Tiempo: mientras dura la súper velocidad, la motocicleta de relojes va debajo del jugador
+    if (s.timeRushT > 0) drawMotoBody(ctx, s.player.x, s.player.y, 1, (s.rachaClock || 0) * 46);
+
+    // player (durante la carga de Racha y la pausa de Fase/Ladrón/Brasa/Tiempo/Moto se dibuja al final, encima del oscurecido)
+    if (!(s.rachaChargeT > 0) && !(s.faseT > 0) && !(s.ladronT > 0) && !(s.brasaT > 0) && !(s.tiempoT > 0) && !(s.motoT > 0) && !(s.muerteT > 0)) drawPlayerMaybeMetal(ctx, s, abilityId);
     // Ladrón: el tajo donde el monstruo lo tocó (las dos mitades se separan y caen)
     if (s.cutFx) drawCutGhost(ctx, s, abilityId);
 
@@ -3586,34 +4276,17 @@ function ChaseGame({
       ctx.globalAlpha = 1;
     }
 
-    // sierra shield orbiting the player
-    if (s.activeEffectAbility === "sierra" && s.activeEffectT > 0) {
-      const spin = s.time * 9;
-      [spin, spin + Math.PI].forEach((ang) => {
-        const sx = s.player.x + Math.cos(ang) * 20;
-        const sy = s.player.y + Math.sin(ang) * 20;
-        ctx.save();
-        ctx.translate(sx, sy);
-        ctx.rotate(s.time * 26);
-        ctx.fillStyle = "#B7BEC4";
-        ctx.beginPath();
-        ctx.arc(0, 0, 7, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = "#4A4E52";
-        ctx.lineWidth = 1.4;
-        for (let i = 0; i < 8; i++) {
-          const a2 = (i / 8) * Math.PI * 2;
-          ctx.beginPath();
-          ctx.moveTo(Math.cos(a2) * 6, Math.sin(a2) * 6);
-          ctx.lineTo(Math.cos(a2) * 10, Math.sin(a2) * 10);
-          ctx.stroke();
-        }
-        ctx.fillStyle = "#5C6266";
-        ctx.beginPath();
-        ctx.arc(0, 0, 2.4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      });
+    // capa de metal activa: brillo que recorre el contorno del cuerpo (ya gris y más grande)
+    if (s.activeEffectAbility === "metal" && s.activeEffectT > 0) {
+      const px = s.player.x, py = s.player.y;
+      ctx.save();
+      const sweep = (s.time * 2.2) % 1;
+      ctx.strokeStyle = `rgba(240,245,250,${0.5 + 0.4 * Math.sin(s.time * 10)})`;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(px, py - 4, 15, sweep * Math.PI * 2, sweep * Math.PI * 2 + 1.2);
+      ctx.stroke();
+      ctx.restore();
     }
 
     // tornado carrying the player, and the twin funnel flying the other way
@@ -3675,6 +4348,8 @@ function ChaseGame({
         seed: 0,
         echo: false,
       });
+      // quemado por la bola de fuego o por las paredes en llamas
+      if (s.monsterBurnT > 0) drawBurnFlames(ctx, s.monster.x, s.monster.y, s.rachaClock || 0, Math.min(1, s.monsterBurnT / 0.5), 1);
     }
 
     s.cloneMonsters.forEach((c, i) => {
@@ -3688,6 +4363,7 @@ function ChaseGame({
         seed: i * 2.1 + 1,
         echo: true,
       });
+      if (c.burnT > 0) drawBurnFlames(ctx, c.x, c.y, s.rachaClock || 0, Math.min(1, c.burnT / 0.5), 0.86);
       if (c.lungeTelegraph > 0) {
         const alphaT = 0.5 + 0.5 * Math.sin(s.time * 30);
         ctx.strokeStyle = `rgba(200,30,30,${alphaT})`;
@@ -3722,6 +4398,25 @@ function ChaseGame({
         ctx.stroke();
       }
       ctx.globalAlpha = 1;
+    }
+
+    // Muerte: tajo morado brillante donde la hoz cortó al monstruo
+    if (s.monsterCutFx) {
+      const fx = s.monsterCutFx;
+      const u = 1 - fx.t / MUERTE_CUT_FX_T;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, fx.t / MUERTE_CUT_FX_T);
+      ctx.strokeStyle = "#C77DFF";
+      ctx.lineWidth = 3;
+      ctx.shadowColor = "rgba(180,80,255,0.9)";
+      ctx.shadowBlur = 10;
+      const a = MUERTE_CUT_A;
+      const len = MONSTER_R * 1.7 + u * 14;
+      ctx.beginPath();
+      ctx.moveTo(fx.x - Math.cos(a) * len, fx.y - Math.sin(a) * len);
+      ctx.lineTo(fx.x + Math.cos(a) * len, fx.y + Math.sin(a) * len);
+      ctx.stroke();
+      ctx.restore();
     }
 
     // stolen life coin
@@ -3779,6 +4474,33 @@ function ChaseGame({
 
     // Ladrón: unión de las dos mitades y rayo al monstruo (juego en pausa)
     if (ladOn) drawLadronScene(ctx, s, abilityId, camX, ladInfo);
+
+    // Brasa: escena oscurecida, bola de fuego (habilidad) o manos que incendian las paredes (súper)
+    if (brasaOn) drawBrasaScene(ctx, s, abilityId, camX, brasaP);
+
+    // Tiempo: escena oscurecida, giro, brazo extendido y esfera verde hacia el monstruo
+    if (s.tiempoT > 0 && s.tiempoFx) drawTiempoScene(ctx, s, abilityId, camX, 1 - s.tiempoT / TIEMPO_T, s.tiempoFx);
+
+    // Súper Tiempo: escena oscurecida, salto y motocicleta de relojes apareciendo debajo
+    if (s.motoT > 0) drawMotoScene(ctx, s, abilityId, camX, 1 - s.motoT / MOTO_T);
+    if (s.electricoT > 0 && s.electricoFx) {
+      const eT = s.electricoFx.superMode ? ELECTRICO_SUPER_T : ELECTRICO_T;
+      drawElectricoScene(ctx, s, abilityId, camX, 1 - s.electricoT / eT);
+    }
+
+    // Luz: escena oscurecida — rayo gigante de luz al monstruo (habilidad) o brillo y teletransporte (súper)
+    if (s.luzT > 0 && s.luzFx) {
+      const eT = s.luzFx.superMode ? LUZ_SUPER_T : LUZ_T;
+      drawLuzScene(ctx, s, abilityId, camX, 1 - s.luzT / eT);
+    }
+
+    // Metal: escena oscurecida, capa de metal recubriendo el cuerpo
+    if (s.metalT > 0 && s.metalFx) drawMetalScene(ctx, s, abilityId, camX, 1 - s.metalT / METAL_T);
+
+    // Súper Metal: escena oscurecida, manos apuntando al frente y rayos formando bultos metálicos
+    if (s.metalSuperT > 0 && s.metalSuperFx) drawMetalSuperScene(ctx, s, abilityId, camX, 1 - s.metalSuperT / METAL_SUPER_T);
+    // Muerte: escena oscurecida — pared (súper) o brillo morado + hoz + corte al monstruo
+    if (muerteOn) drawMuerteScene(ctx, s, abilityId, camX, muertePh);
 
     ctx.restore();
   }
@@ -3851,6 +4573,507 @@ function ChaseGame({
     // destellos: al entrar y al salir
     drawFaseFlash(ctx, fz.ex, fz.ey, seg01(p, 0.76, 0.92));
     drawFaseFlash(ctx, fz.xx, fz.xy, seg01(p, 0.8, 0.96));
+  }
+
+
+  // Dibuja el cuerpo (cualquier personaje) teñido de naranja brillante y con resplandor
+  function drawBodyOrange(ctx, s, abilityId, tint, clock) {
+    if (tint <= 0.01) { drawPlayerBody(ctx, s, abilityId); return; }
+    const S = 3, N = 240;
+    const x = s.player.x, y = s.player.y;
+    if (!_brasaOff) {
+      _brasaOff = document.createElement("canvas");
+      _brasaOff.width = N * S;
+      _brasaOff.height = N * S;
+    }
+    const o = _brasaOff.getContext("2d");
+    o.save();
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalAlpha = 1;
+    o.globalCompositeOperation = "source-over";
+    o.clearRect(0, 0, N * S, N * S);
+    o.setTransform(S, 0, 0, S, (N / 2 - x) * S, (N / 2 - y) * S);
+    drawPlayerBody(o, s, abilityId);
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalCompositeOperation = "source-atop";
+    const gr = o.createLinearGradient(0, (N / 2 - 24) * S, 0, (N / 2 + 18) * S);
+    gr.addColorStop(0, "#FFD24A");
+    gr.addColorStop(0.45, "#FF9A1A");
+    gr.addColorStop(1, "#FF5A0A");
+    o.globalAlpha = Math.min(1, tint * 1.05);
+    o.fillStyle = gr;
+    o.fillRect(0, 0, N * S, N * S);
+    o.restore();
+    ctx.save();
+    ctx.shadowColor = "rgba(255,120,20,0.95)";
+    ctx.shadowBlur = 14 * tint;
+    ctx.drawImage(_brasaOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+    // pasada aditiva: hace que el naranja brille
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.45 * tint * (0.85 + 0.15 * Math.sin(clock * 14));
+    ctx.drawImage(_brasaOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+  }
+
+  // Dibuja el cuerpo (cualquier personaje) teñido de gris metálico brillante
+  function drawBodyGray(ctx, s, abilityId, tint) {
+    if (tint <= 0.01) { drawPlayerBody(ctx, s, abilityId); return; }
+    const S = 3, N = 240;
+    const x = s.player.x, y = s.player.y;
+    if (!_metalOff) {
+      _metalOff = document.createElement("canvas");
+      _metalOff.width = N * S;
+      _metalOff.height = N * S;
+    }
+    const o = _metalOff.getContext("2d");
+    o.save();
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalAlpha = 1;
+    o.globalCompositeOperation = "source-over";
+    o.clearRect(0, 0, N * S, N * S);
+    o.setTransform(S, 0, 0, S, (N / 2 - x) * S, (N / 2 - y) * S);
+    drawPlayerBody(o, s, abilityId);
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalCompositeOperation = "source-atop";
+    const gr = o.createLinearGradient(0, (N / 2 - 24) * S, 0, (N / 2 + 18) * S);
+    gr.addColorStop(0, "#E7ECEF");
+    gr.addColorStop(0.45, "#9AA5B1");
+    gr.addColorStop(1, "#5C6266");
+    o.globalAlpha = Math.min(1, tint * 1.05);
+    o.fillStyle = gr;
+    o.fillRect(0, 0, N * S, N * S);
+    o.restore();
+    ctx.save();
+    ctx.shadowColor = "rgba(225,230,235,0.75)";
+    ctx.shadowBlur = 10 * tint;
+    ctx.drawImage(_metalOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.3 * tint * (0.85 + 0.15 * Math.sin((s.rachaClock || 0) * 14));
+    ctx.drawImage(_metalOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+  }
+
+  // Dibuja el cuerpo (cualquier personaje) teñido de un morado intenso y brillante
+  function drawBodyPurple(ctx, s, abilityId, tint) {
+    if (tint <= 0.01) { drawPlayerBody(ctx, s, abilityId); return; }
+    const S = 3, N = 240;
+    const x = s.player.x, y = s.player.y;
+    if (!_muerteOff) {
+      _muerteOff = document.createElement("canvas");
+      _muerteOff.width = N * S;
+      _muerteOff.height = N * S;
+    }
+    const o = _muerteOff.getContext("2d");
+    o.save();
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalAlpha = 1;
+    o.globalCompositeOperation = "source-over";
+    o.clearRect(0, 0, N * S, N * S);
+    o.setTransform(S, 0, 0, S, (N / 2 - x) * S, (N / 2 - y) * S);
+    drawPlayerBody(o, s, abilityId);
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalCompositeOperation = "source-atop";
+    const gr = o.createLinearGradient(0, (N / 2 - 24) * S, 0, (N / 2 + 18) * S);
+    gr.addColorStop(0, "#E4B8FF");
+    gr.addColorStop(0.45, "#9B3FD1");
+    gr.addColorStop(1, "#4A0F73");
+    o.globalAlpha = Math.min(1, tint * 1.05);
+    o.fillStyle = gr;
+    o.fillRect(0, 0, N * S, N * S);
+    o.restore();
+    ctx.save();
+    ctx.shadowColor = "rgba(190,110,255,0.95)";
+    ctx.shadowBlur = 16 * tint;
+    ctx.drawImage(_muerteOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.5 * tint * (0.85 + 0.15 * Math.sin((s.rachaClock || 0) * 14));
+    ctx.drawImage(_muerteOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+  }
+
+  // Igual que drawBodyPurple pero con un tinte blanco-dorado (carga/brillo de Luz)
+  function drawBodyLight(ctx, s, abilityId, tint) {
+    if (tint <= 0.01) { drawPlayerBody(ctx, s, abilityId); return; }
+    const S = 3, N = 240;
+    const x = s.player.x, y = s.player.y;
+    if (!_luzOff) {
+      _luzOff = document.createElement("canvas");
+      _luzOff.width = N * S;
+      _luzOff.height = N * S;
+    }
+    const o = _luzOff.getContext("2d");
+    o.save();
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalAlpha = 1;
+    o.globalCompositeOperation = "source-over";
+    o.clearRect(0, 0, N * S, N * S);
+    o.setTransform(S, 0, 0, S, (N / 2 - x) * S, (N / 2 - y) * S);
+    drawPlayerBody(o, s, abilityId);
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalCompositeOperation = "source-atop";
+    const gr = o.createLinearGradient(0, (N / 2 - 24) * S, 0, (N / 2 + 18) * S);
+    gr.addColorStop(0, "#FFFFFF");
+    gr.addColorStop(0.45, "#FFE9A8");
+    gr.addColorStop(1, "#FFC93C");
+    o.globalAlpha = Math.min(1, tint * 1.05);
+    o.fillStyle = gr;
+    o.fillRect(0, 0, N * S, N * S);
+    o.restore();
+    ctx.save();
+    ctx.shadowColor = "rgba(255,240,200,0.95)";
+    ctx.shadowBlur = 18 * tint;
+    ctx.drawImage(_luzOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.55 * tint * (0.85 + 0.15 * Math.sin((s.rachaClock || 0) * 14));
+    ctx.drawImage(_luzOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+  }
+
+  // Dibuja la hoz gigante de Muerte: mango oscuro + hoja curva morada brillante
+  function drawScythe(ctx, x, y, dirx, diry, k, alpha) {
+    if (k <= 0.01 || alpha <= 0.01) return;
+    const ang = Math.atan2(diry, dirx);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(ang);
+    ctx.globalAlpha = alpha;
+    const shaftLen = 34 * k;
+    ctx.strokeStyle = "#241326";
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-6 * k, 0);
+    ctx.lineTo(shaftLen, 0);
+    ctx.stroke();
+    ctx.strokeStyle = "#C77DFF";
+    ctx.lineWidth = 4.2 * k;
+    ctx.shadowColor = "rgba(180,80,255,0.9)";
+    ctx.shadowBlur = 12 * k;
+    ctx.beginPath();
+    ctx.arc(shaftLen, 10 * k, 20 * k, Math.PI * 1.1, Math.PI * 1.85, false);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Muerte (súper): el stickman camina hacia la pared más cercana, extiende el brazo y la toca;
+  // la pared brilla en morado y el personaje desaparece justo ahí.
+  function drawMuerteWallScene(ctx, s, abilityId, camX, p, fx) {
+    const tl = muerteWallTimeline(p);
+    const w = fx.wall;
+    const wx = w.fromX + (w.walkToX - w.fromX) * tl.walk;
+    const wy = w.fromY + (w.walkToY - w.fromY) * tl.walk;
+    const alpha = 1 - tl.fade;
+    const gs = { ...s, player: { x: wx, y: wy }, facing: w.dir, moving: false };
+    if (alpha > 0.02) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      drawBodyPurple(ctx, gs, abilityId, Math.max(0.22, tl.reach));
+      ctx.restore();
+    }
+    if (tl.reach > 0.02 && alpha > 0.02) {
+      ctx.save();
+      ctx.globalAlpha = alpha * tl.reach;
+      ctx.strokeStyle = "#C77DFF";
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(wx, wy - 4);
+      ctx.lineTo(w.touchX, w.touchY);
+      ctx.stroke();
+      ctx.restore();
+    }
+    if (tl.wallGlow > 0.02) {
+      ctx.save();
+      ctx.globalAlpha = tl.wallGlow;
+      ctx.fillStyle = "rgba(160,70,230,0.55)";
+      ctx.shadowColor = "rgba(190,110,255,0.95)";
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.arc(w.touchX, w.touchY, 20 + 6 * tl.wallGlow, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Muerte: el stickman brilla morado, hace crecer una hoz gigante, se desvanece de su lugar y
+  // aparece de golpe junto al monstruo dando el tajo; luego reaparece en su posición original.
+  function drawMuerteStrikeScene(ctx, s, abilityId, camX, p, fx) {
+    const tl = muerteStrikeTimeline(p);
+    const originX = fx.wall ? fx.wall.walkToX : fx.fromX;
+    const originY = fx.wall ? fx.wall.walkToY : fx.fromY;
+    const alphaOrigin = p < 0.5 ? 1 - smooth01(seg01(p, 0.4, 0.5)) : smooth01(seg01(p, 0.82, 1));
+    if (alphaOrigin > 0.02) {
+      const gs = { ...s, player: { x: originX, y: originY } };
+      ctx.save();
+      ctx.globalAlpha = alphaOrigin;
+      drawBodyPurple(ctx, gs, abilityId, tl.glow || (p >= 0.82 ? 0 : 1));
+      if (tl.scytheA > 0.02) {
+        drawScythe(ctx, originX, originY - 4, s.facing.x || 1, s.facing.y || 0, tl.scythe, tl.scytheA);
+      }
+      ctx.restore();
+    }
+    if (p > 0.36 && p < 0.56) {
+      const flashA = smooth01(seg01(p, 0.4, 0.48)) * (1 - smooth01(seg01(p, 0.5, 0.56)));
+      if (flashA > 0.02) {
+        ctx.save();
+        ctx.globalAlpha = flashA;
+        ctx.fillStyle = "#E4B8FF";
+        ctx.beginPath();
+        ctx.arc(originX, originY - 4, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    if (p >= 0.46) {
+      const mAlpha = smooth01(seg01(p, 0.46, 0.54)) * (1 - smooth01(seg01(p, 0.78, 0.92)));
+      if (mAlpha > 0.02) {
+        const mx = fx.monsterX, my = fx.monsterY;
+        const swing = easeOutCubic(seg01(p, 0.5, 0.62));
+        const gs2 = { ...s, player: { x: mx - 16, y: my }, facing: { x: 1, y: 0 } };
+        ctx.save();
+        ctx.globalAlpha = mAlpha;
+        drawBodyPurple(ctx, gs2, abilityId, 1);
+        drawScythe(ctx, mx - 16 + swing * 20, my - 4, 1, 0, 1, 1);
+        ctx.restore();
+      }
+      if (tl.impact > 0.02) {
+        ctx.save();
+        ctx.globalAlpha = tl.impact;
+        ctx.fillStyle = "rgba(200,120,255,0.85)";
+        ctx.shadowColor = "rgba(200,120,255,0.9)";
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(fx.monsterX, fx.monsterY, MONSTER_R * 0.9 + 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
+
+  function drawMuerteScene(ctx, s, abilityId, camX, info) {
+    const fx = s.muerteFx;
+    if (!fx) return;
+    if (info.phase === "wall" && fx.wall) drawMuerteWallScene(ctx, s, abilityId, camX, info.p, fx);
+    else drawMuerteStrikeScene(ctx, s, abilityId, camX, info.phase === "wall" ? 0 : info.p, fx);
+  }
+
+  // Mientras el blindaje de Metal está activo, el personaje se ve más grande y gris (teñido + escalado
+  // desde los pies, para que quede parado en el suelo).
+  function drawPlayerMaybeMetal(ctx, s, abilityId) {
+    const metalOn = s.activeEffectAbility === "metal" && s.activeEffectT > 0;
+    if (!metalOn) { drawPlayer(ctx, s, abilityId); return; }
+    const px = s.player.x, feetY = s.player.y + 15;
+    ctx.save();
+    ctx.translate(px, feetY);
+    ctx.scale(1.55, 1.55);
+    ctx.translate(-px, -feetY);
+    drawBodyGray(ctx, s, abilityId, 1);
+    ctx.restore();
+  }
+
+  // Tiempo: el stickman se voltea hacia el monstruo, extiende el brazo y lanza una esfera verde
+  // brillante que, al llegar, deja al monstruo congelado dentro de un anillo verde.
+  function drawTiempoScene(ctx, s, abilityId, camX, p, fx) {
+    const clock = s.rachaClock || 0;
+    const tl = tiempoTimeline(p);
+    const px = s.player.x, py = s.player.y;
+    const mx = s.monster.x, my = s.monster.y;
+    const dx = fx.dx, dy = fx.dy;
+    const shY = py - 5;
+
+    const dimK = p < 0.1 ? p / 0.1 : p > 0.92 ? Math.max(0, (1 - p) / 0.08) : 1;
+    ctx.fillStyle = `rgba(6,24,20,${0.55 * dimK})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // el stickman se voltea hacia el monstruo y extiende el brazo
+    s.facing = { x: dx, y: dy };
+    s.faseArm = tl.arm;
+    s.armDir = { x: dx, y: dy };
+    s.armColor = ABILITIES.tiempo.accent;
+    drawPlayerBody(ctx, s, abilityId);
+    s.faseArm = 0;
+    s.armDir = null;
+    s.armColor = null;
+
+    const reach = 19 * tl.arm;
+    const hx = px + dx * reach, hy = shY + dy * reach - 2 * tl.arm;
+
+    // chispas verdes que convergen en la mano mientras la esfera se forma
+    const chargeA = tl.arm * (1 - tl.travel);
+    if (chargeA > 0.05) {
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineWidth = 1.6;
+      for (let i = 0; i < 8; i++) {
+        const ph = (clock * 1.7 + i * 0.12) % 1;
+        const ang = i * 2.399 + clock * 3;
+        const d1 = (24 + 5 * (i % 3)) * (1 - ph);
+        ctx.strokeStyle = `rgba(120,225,190,${chargeA * (0.3 + 0.7 * ph)})`;
+        ctx.beginPath();
+        ctx.moveTo(hx + Math.cos(ang) * d1, hy + Math.sin(ang) * d1);
+        ctx.lineTo(hx + Math.cos(ang) * (d1 + 6), hy + Math.sin(ang) * (d1 + 6));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    // esfera formándose en la mano
+    if (chargeA > 0.01) {
+      const cr = 10 + 16 * tl.charge;
+      const og = ctx.createRadialGradient(hx, hy, 0, hx, hy, cr * 1.8);
+      og.addColorStop(0, `rgba(235,255,248,${chargeA})`);
+      og.addColorStop(0.35, `rgba(90,220,180,${chargeA * 0.95})`);
+      og.addColorStop(1, "rgba(63,160,137,0)");
+      ctx.fillStyle = og;
+      ctx.beginPath(); ctx.arc(hx, hy, cr * 1.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(235,255,248,${chargeA})`;
+      ctx.beginPath(); ctx.arc(hx, hy, cr * 0.55, 0, Math.PI * 2); ctx.fill();
+    }
+    // la esfera viaja de la mano al monstruo — grande, sólida y con halo bien visible
+    if (tl.travel > 0.001) {
+      const sx = hx + (mx - hx) * tl.travel, sy = hy + (my - hy) * tl.travel;
+      const r = TIEMPO_SPHERE_R * (1 - 0.2 * tl.hit);
+      // halo exterior amplio
+      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 2.6);
+      g.addColorStop(0, "rgba(120,255,210,0.55)");
+      g.addColorStop(0.55, "rgba(63,220,170,0.35)");
+      g.addColorStop(1, "rgba(63,160,137,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(sx, sy, r * 2.6, 0, Math.PI * 2); ctx.fill();
+      // cuerpo sólido de la esfera
+      const b = ctx.createRadialGradient(sx - r * 0.25, sy - r * 0.25, 0, sx, sy, r);
+      b.addColorStop(0, "#F2FFFA");
+      b.addColorStop(0.45, "#6BE3B4");
+      b.addColorStop(1, "#2E8F72");
+      ctx.fillStyle = b;
+      ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill();
+      // brillo central
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.beginPath(); ctx.arc(sx - r * 0.28, sy - r * 0.28, r * 0.32, 0, Math.PI * 2); ctx.fill();
+    }
+    // impacto: el monstruo queda congelado dentro de un anillo verde
+    if (tl.travel > 0.9) {
+      ctx.strokeStyle = ABILITIES.tiempo.accent;
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.55 + 0.45 * tl.hit;
+      ctx.beginPath();
+      ctx.arc(mx, my, MONSTER_R + 14 + 8 * (1 - tl.hit), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Súper Tiempo: el stickman se agacha, salta y aterriza sobre una motocicleta que en vez de
+  // ruedas tiene relojes analógicos; al arrancar obtiene la súper velocidad y la inmunidad de Racha.
+  function drawMotoScene(ctx, s, abilityId, camX, p) {
+    const tl = motoTimeline(p);
+    const px = s.player.x, py = s.player.y;
+
+    const dimK = p < 0.1 ? p / 0.1 : p > 0.92 ? Math.max(0, (1 - p) / 0.08) : 1;
+    ctx.fillStyle = `rgba(8,12,22,${0.5 * dimK})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    const jumpH = 24 * Math.sin(Math.PI * clamp01(tl.jump));
+    const crouch = 3 * tl.crouch * (1 - tl.jump);
+    const spin = (s.rachaClock || 0) * (6 + 46 * tl.rev);
+
+    drawMotoBody(ctx, px, py + crouch, tl.bike, spin);
+
+    ctx.save();
+    ctx.translate(0, -jumpH + crouch * 0.6);
+    drawPlayerBody(ctx, s, abilityId);
+    ctx.restore();
+  }
+
+  function drawBrasaScene(ctx, s, abilityId, camX, p) {
+    const fx = s.brasaFx;
+    if (!fx) return;
+    if (fx.superMode) { drawBrasaSuperScene(ctx, s, abilityId, camX, p); return; }
+    const tl = brasaTimeline(p);
+    const clock = s.rachaClock || 0;
+    const px = s.player.x, py = s.player.y;
+
+    // escena oscurecida (tono cálido) y luz solo sobre el stickman
+    const vg = ctx.createRadialGradient(px, py, 30, px, py, 300);
+    vg.addColorStop(0, `rgba(30,8,0,${0.3 * tl.dim})`);
+    vg.addColorStop(1, `rgba(20,5,0,${0.88 * tl.dim})`);
+    ctx.fillStyle = vg;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // el stickman se ve al principio y desaparece dentro de la bola de fuego
+    if (tl.body < 0.02) drawPlayerBody(ctx, s, abilityId);
+    else drawPlayerFaded(ctx, s, abilityId, 1 - tl.body);
+    drawBrasaBall(ctx, px, py, clock, { r: 0.3 + 0.7 * tl.grow, a: tl.ball, hard: tl.hard, bloom: tl.bloom });
+  }
+
+  function drawBrasaSuperScene(ctx, s, abilityId, camX, p) {
+    const fx = s.brasaFx;
+    const tl = brasaSuperTimeline(p);
+    const clock = s.rachaClock || 0;
+    const px = s.player.x, py = s.player.y;
+
+    // escena oscurecida (tono cálido) y luz solo sobre el stickman
+    const vg = ctx.createRadialGradient(px, py, 40, px, py, 340);
+    vg.addColorStop(0, `rgba(30,8,0,${0.26 * tl.dim})`);
+    vg.addColorStop(1, `rgba(20,5,0,${0.84 * tl.dim})`);
+    ctx.fillStyle = vg;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // paredes: se encienden de a poco, con luz propia por encima del oscurecido
+    fx.walls.forEach((w, i) => {
+      const k = brasaWallK(p, i);
+      if (k > 0.01) drawWallFire(ctx, w.wl, clock, k, { x: w.ox, y: w.oy });
+    });
+
+    // aura de calor alrededor del stickman
+    if (tl.tint > 0.02) {
+      const ag = ctx.createRadialGradient(px, py - 2, 4, px, py - 2, 46);
+      ag.addColorStop(0, `rgba(255,190,70,${0.55 * tl.tint})`);
+      ag.addColorStop(1, "rgba(255,110,20,0)");
+      ctx.fillStyle = ag;
+      ctx.beginPath(); ctx.arc(px, py - 2, 46, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // stickman naranja brillante con las dos manos apuntando hacia las paredes
+    s.brasaArms = { a: fx.hands[0].d, b: fx.hands[1].d, k: tl.arm };
+    drawBodyOrange(ctx, s, abilityId, tl.tint, clock);
+    s.brasaArms = null;
+
+    // llamitas que le salen del cuerpo
+    if (tl.tint > 0.05) {
+      for (let i = 0; i < 7; i++) {
+        const ph = (clock * 1.3 + i * 0.19) % 1;
+        const ox = (i - 3) * 3.2 + Math.sin(clock * 6 + i) * 1.6;
+        const oy = -15 + (i % 3) * 9;
+        drawFlame(ctx, px + ox, py + oy, 0, -1, (5 + 8 * ph) * tl.tint, 2.4, Math.sin(clock * 14 + i) * 1.6, tl.tint * (1 - ph * 0.6), 2);
+      }
+    }
+
+    // fuego en las palmas y chorros hacia las paredes
+    fx.hands.forEach((h) => {
+      const hp = brasaHand(s, h.d, tl.arm);
+      if (tl.jetA > 0.02) drawFireJet(ctx, hp.x, hp.y, h.ax, h.ay, tl.jet, clock, 1.25, tl.jetA);
+      if (tl.palm > 0.02) {
+        const gl = ctx.createRadialGradient(hp.x, hp.y, 0, hp.x, hp.y, 16 * tl.palm);
+        gl.addColorStop(0, `rgba(255,250,215,${0.95 * tl.palm})`);
+        gl.addColorStop(0.5, `rgba(255,170,50,${0.7 * tl.palm})`);
+        gl.addColorStop(1, "rgba(255,90,10,0)");
+        ctx.fillStyle = gl;
+        ctx.beginPath(); ctx.arc(hp.x, hp.y, 16 * tl.palm, 0, Math.PI * 2); ctx.fill();
+        const ang = Math.atan2(h.d.y, h.d.x);
+        for (let i = -1; i <= 1; i++) {
+          const a2 = ang + i * 0.42;
+          drawFlame(ctx, hp.x, hp.y, Math.cos(a2), Math.sin(a2), (7 + 6 * Math.sin(clock * 17 + i * 2)) * tl.palm + 3, 3, Math.sin(clock * 19 + i) * 1.8, tl.palm, 3);
+        }
+      }
+    });
   }
 
   function drawMonsterBody(ctx, s, abilityId, o) {
@@ -4082,6 +5305,329 @@ function ChaseGame({
       }
       ctx.restore();
     }
+  }
+
+  // Metal: el juego se pausa, se centra en el personaje y una capa de metal lo va recubriendo.
+  function drawMetalScene(ctx, s, abilityId, camX, p) {
+    const tl = metalTimeline(p);
+    const px = s.player.x, py = s.player.y;
+
+    ctx.fillStyle = `rgba(16,18,22,${0.4 * smooth01(seg01(p, 0, 0.12)) * (1 - smooth01(seg01(p, 0.9, 1)))})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    {
+      const growK = smooth01(p);
+      const feetY = py + 15;
+      ctx.save();
+      ctx.translate(px, feetY);
+      ctx.scale(1 + 0.55 * growK, 1 + 0.55 * growK);
+      ctx.translate(-px, -feetY);
+      drawBodyGray(ctx, s, abilityId, growK);
+      ctx.restore();
+    }
+
+    if (tl.rise > 0.02) {
+      const r = 10 + 16 * tl.rise;
+      const g = ctx.createRadialGradient(px, py - 4, 0, px, py - 4, r);
+      g.addColorStop(0, `rgba(226,231,236,${0.5 * tl.rise})`);
+      g.addColorStop(0.55, `rgba(154,165,177,${0.5 * tl.rise})`);
+      g.addColorStop(1, "rgba(124,134,141,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(px, py - 4, r, 0, Math.PI * 2); ctx.fill();
+    }
+    if (tl.shine > 0.02) {
+      ctx.save();
+      ctx.strokeStyle = `rgba(240,245,250,${0.8 * (1 - tl.shine)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px, py - 4, 16 + tl.shine * 18, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // Súper Metal: ambas manos apuntan al frente y disparan 30 rayos metálicos cada una; donde caen
+  // dejan un bulto de metal que sólo el propio stickman puede atravesar.
+  function drawMetalSuperScene(ctx, s, abilityId, camX, p) {
+    const fx = s.metalSuperFx;
+    if (!fx) return;
+    const tl = metalSuperTimeline(p);
+    const px = s.player.x, py = s.player.y;
+
+    ctx.fillStyle = `rgba(16,18,22,${0.42 * smooth01(seg01(p, 0, 0.1)) * (1 - smooth01(seg01(p, 0.92, 1)))})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    s.brasaArms = { a: fx.hands[0], b: fx.hands[1], k: tl.aim };
+    drawPlayerBody(ctx, s, abilityId);
+    s.brasaArms = null;
+
+    if (tl.fire > 0.001) {
+      fx.hands.forEach((d, hi) => {
+        const hp = brasaHand(s, d, 1);
+        fx.rays.filter((r) => r.hand === hi).forEach((r) => {
+          const local = clamp01((tl.fire - r.delay) / Math.max(0.05, 1 - r.delay));
+          if (local <= 0) return;
+          const travel = easeOutCubic(Math.min(1, local * 1.5));
+          const rx = hp.x + (r.x - hp.x) * travel;
+          const ry = hp.y + (r.y - hp.y) * travel;
+          const fade = local < 1 ? 1 : Math.max(0, 1 - (local - 1) * 3);
+          ctx.strokeStyle = `rgba(210,218,224,${0.85 * fade})`;
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(hp.x, hp.y);
+          ctx.lineTo(rx, ry);
+          ctx.stroke();
+          if (local >= 0.97) {
+            ctx.save();
+            ctx.globalAlpha = fade;
+            ctx.fillStyle = "#9AA5B1";
+            ctx.beginPath(); ctx.arc(r.x, r.y, 3.5, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = "#4A4E52";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
+          }
+        });
+      });
+    }
+  }
+
+  // Descarga / Aturdir: el juego se pausa, le caen rayos amarillos encima y luego lanza un gran rayo al monstruo.
+  function drawElectricoScene(ctx, s, abilityId, camX, p) {
+    const fx = s.electricoFx;
+    if (!fx) return;
+    if (fx.superMode) { drawElectricoSuperScene(ctx, s, abilityId, camX, p); return; }
+    const tl = electricoTimeline(p);
+    const clock = s.rachaClock || 0;
+    const px = s.player.x, py = s.player.y;
+    const mx = s.monster.x, my = s.monster.y;
+
+    ctx.fillStyle = `rgba(24,20,4,${0.55 * tl.dim})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // lluvia de rayos amarillos cayendo sobre el personaje
+    fx.bolts.forEach((b) => {
+      const lp = smooth01(seg01(tl.rain, b.delay * 0.7, b.delay * 0.7 + 0.5));
+      if (lp <= 0.01) return;
+      const topY = py - 240;
+      const endY = py - 6 - 30 * (1 - lp);
+      drawLightningBolt(ctx, px + b.ox, topY, px + b.ox * 0.25, endY, b.seed, lp * (0.7 + 0.3 * Math.sin(clock * 30 + b.seed)), ABILITIES.electrico.accent, 3);
+      if (lp > 0.7) {
+        ctx.save();
+        ctx.globalAlpha = (lp - 0.7) / 0.3;
+        ctx.fillStyle = "#FFF6C8";
+        ctx.beginPath(); ctx.arc(px + b.ox * 0.25, endY, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+    });
+
+    // el personaje se carga en amarillo mientras le caen los rayos encima
+    if (tl.charge > 0.01) {
+      const g = ctx.createRadialGradient(px, py - 6, 4, px, py - 6, 34);
+      g.addColorStop(0, `rgba(255,240,170,${0.55 * tl.charge})`);
+      g.addColorStop(1, "rgba(255,200,40,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(px, py - 6, 34, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // extiende la mano hacia el monstruo
+    const dx0 = mx - px, dy0 = my - py;
+    const d0 = Math.hypot(dx0, dy0) || 1;
+    const dx = dx0 / d0, dy = dy0 / d0;
+    s.facing = { x: dx, y: dy };
+    s.faseArm = tl.arm;
+    s.armDir = { x: dx, y: dy };
+    s.armColor = ABILITIES.electrico.accent;
+    drawPlayerBody(ctx, s, abilityId);
+    s.faseArm = 0;
+    s.armDir = null;
+    s.armColor = null;
+
+    const reach = 19 * tl.arm;
+    const hx = px + dx * reach, hy = py - 5 + dy * reach;
+
+    // el gran rayo viaja de la mano al monstruo
+    if (tl.travel > 0.001) {
+      const tx = hx + (mx - hx) * tl.travel, ty = hy + (my - hy) * tl.travel;
+      drawLightningBolt(ctx, hx, hy, tx, ty, 3, 1, ABILITIES.electrico.accent, 5);
+    }
+    // impacto: el monstruo queda paralizado
+    if (tl.travel > 0.9) {
+      ctx.save();
+      ctx.strokeStyle = ABILITIES.electrico.accent;
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.55 + 0.45 * tl.hit;
+      ctx.beginPath();
+      ctx.arc(mx, my, MONSTER_R + 14 + 8 * (1 - tl.hit), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+  }
+
+  // Súper Descarga: el personaje levanta la mano, la baja con fuerza y de ahí nacen los rayos
+  // que forman la pared eléctrica circular a su alrededor.
+  function drawElectricoSuperScene(ctx, s, abilityId, camX, p) {
+    const tl = electricoSuperTimeline(p);
+    const fx = s.electricoFx;
+    const px = s.player.x, py = s.player.y;
+    const clock = s.rachaClock || 0;
+
+    ctx.fillStyle = `rgba(24,20,4,${0.55 * tl.dim})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    drawPlayerBody(ctx, s, abilityId);
+
+    // brazo: se levanta y luego baja con fuerza
+    const shX = px, shY = py - 16;
+    const raiseY = shY - 22 * tl.raise;
+    const downY = shY - 22 * (1 - tl.slam) + 5 * tl.slam;
+    const handY = tl.slam > 0.01 ? downY : raiseY;
+    ctx.save();
+    ctx.strokeStyle = "#3A342E";
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(shX, shY);
+    ctx.lineTo(shX, handY);
+    ctx.stroke();
+    if (tl.raise > 0.05 || tl.slam > 0.01) {
+      const g = ctx.createRadialGradient(shX, handY, 1, shX, handY, 12);
+      g.addColorStop(0, "rgba(255,240,170,0.85)");
+      g.addColorStop(1, "rgba(255,200,40,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(shX, handY, 12, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+
+    // del golpe de la mano nacen rayos que caen alrededor y forman la pared
+    if (tl.bolts > 0.01) {
+      fx.bolts.forEach((b) => {
+        const lp = smooth01(seg01(tl.bolts, b.delay, b.delay + 0.5));
+        if (lp <= 0.01) return;
+        const ex = px + Math.cos(b.ang) * ELECTRICO_WALL_R, ey = py + Math.sin(b.ang) * ELECTRICO_WALL_R;
+        drawLightningBolt(ctx, ex, ey - 180, ex, ey, b.seed, lp, ABILITIES.electrico.accent, 2.6);
+      });
+    }
+    // la pared eléctrica circular se forma alrededor del stickman
+    if (tl.wall > 0.01) {
+      const R = ELECTRICO_WALL_R;
+      const n = fx.bolts.length;
+      for (let i = 0; i < n; i++) {
+        const a0 = fx.bolts[i].ang, a1 = fx.bolts[(i + 1) % n].ang + (i === n - 1 ? Math.PI * 2 : 0);
+        const x1 = px + Math.cos(a0) * R, y1 = py + Math.sin(a0) * R;
+        const x2 = px + Math.cos(a1) * R, y2 = py + Math.sin(a1) * R;
+        drawLightningBolt(ctx, x1, y1, x2, y2, i * 5 + Math.floor(clock * 8), tl.wall * (0.6 + 0.4 * Math.sin(clock * 20 + i)), ABILITIES.electrico.accent, 2.4);
+      }
+    }
+  }
+
+  // Luz: el personaje se gira hacia el monstruo, se carga con un resplandor blanco-dorado y
+  // lanza un ultra gigantesco rayo de luz desde las manos que lo deja aturdido.
+  function drawLuzScene(ctx, s, abilityId, camX, p) {
+    const fx = s.luzFx;
+    if (!fx) return;
+    if (fx.superMode) { drawLuzSuperScene(ctx, s, abilityId, camX, p); return; }
+    const tl = luzTimeline(p);
+    const clock = s.rachaClock || 0;
+    const px = s.player.x, py = s.player.y;
+    const mx = s.monster.x, my = s.monster.y;
+
+    ctx.fillStyle = `rgba(20,18,10,${0.5 * tl.dim})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // se gira hacia el monstruo
+    const dx0 = mx - px, dy0 = my - py;
+    const d0 = Math.hypot(dx0, dy0) || 1;
+    const dx = dx0 / d0, dy = dy0 / d0;
+    s.facing = { x: dx, y: dy };
+
+    // se carga con un resplandor blanco-dorado
+    if (tl.charge > 0.01) {
+      const g = ctx.createRadialGradient(px, py - 6, 4, px, py - 6, 40);
+      g.addColorStop(0, `rgba(255,250,225,${0.6 * tl.charge})`);
+      g.addColorStop(1, "rgba(255,220,110,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(px, py - 6, 40, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // extiende las manos hacia el monstruo
+    s.faseArm = Math.max(tl.arm, tl.charge * 0.4);
+    s.armDir = { x: dx, y: dy };
+    s.armColor = ABILITIES.luz.accent;
+    drawBodyLight(ctx, s, abilityId, Math.max(tl.charge, tl.arm * 0.7));
+    s.faseArm = 0;
+    s.armDir = null;
+    s.armColor = null;
+
+    const reach = 22 * tl.arm;
+    const hx = px + dx * reach, hy = py - 5 + dy * reach;
+    const nx = -dy, ny = dx;
+
+    // el ultra gigantesco rayo de luz viaja de las manos al monstruo
+    if (tl.beam > 0.001) {
+      const tx = hx + (mx - hx) * tl.beam, ty = hy + (my - hy) * tl.beam;
+      drawLightBeam(ctx, hx - nx * 9, hy - ny * 9, tx - nx * 5, ty - ny * 5, clock, 1, ABILITIES.luz.accent);
+      drawLightBeam(ctx, hx + nx * 9, hy + ny * 9, tx + nx * 5, ty + ny * 5, clock, 1, ABILITIES.luz.accent);
+    }
+    // impacto: el monstruo queda aturdido
+    if (tl.beam > 0.9) {
+      ctx.save();
+      ctx.strokeStyle = ABILITIES.luz.accent;
+      ctx.lineWidth = 6;
+      ctx.globalAlpha = 0.6 + 0.4 * tl.hit;
+      ctx.beginPath();
+      ctx.arc(mx, my, MONSTER_R + 26 + 16 * (1 - tl.hit), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+  }
+
+  // Súper Luz: el personaje brilla con una luz blanca intensa hasta casi fundirse en el
+  // resplandor y se teletransporta a otro punto.
+  function drawLuzSuperScene(ctx, s, abilityId, camX, p) {
+    const tl = luzSuperTimeline(p);
+    const fx = s.luzFx;
+    if (!fx) return;
+
+    ctx.fillStyle = `rgba(20,18,10,${0.5 * tl.dim})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    const atTarget = p > 0.58;
+    const savedX = s.player.x, savedY = s.player.y;
+    s.player.x = atTarget ? fx.toX : fx.fromX;
+    s.player.y = atTarget ? fx.toY : fx.fromY;
+
+    const tint = atTarget ? tl.reveal : tl.glow;
+    drawBodyLight(ctx, s, abilityId, tint);
+
+    if (!atTarget && tl.vanish > 0.01) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const r = 30 * tl.vanish;
+      const g = ctx.createRadialGradient(fx.fromX, fx.fromY, 0, fx.fromX, fx.fromY, r);
+      g.addColorStop(0, `rgba(255,255,255,${0.9 * tl.vanish})`);
+      g.addColorStop(1, "rgba(255,240,190,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(fx.fromX, fx.fromY, r, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    if (atTarget) {
+      const rp = 1 - tl.reveal;
+      const r = 34 * (0.3 + 0.7 * rp);
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const g = ctx.createRadialGradient(fx.toX, fx.toY, 0, fx.toX, fx.toY, r);
+      g.addColorStop(0, `rgba(255,255,255,${0.85 * (0.3 + 0.7 * rp)})`);
+      g.addColorStop(1, "rgba(255,240,190,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(fx.toX, fx.toY, r, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    s.player.x = savedX;
+    s.player.y = savedY;
   }
 
   function drawLadronScene(ctx, s, abilityId, camX, info) {
@@ -4323,7 +5869,19 @@ function ChaseGame({
     ctx.restore();
   }
 
+  // Con la bola de fuego de Brasa encendida el stickman se ve cada vez menos: dentro del fuego no se ve y,
+  // cuando el fuego se suaviza y se disipa, reaparece.
   function drawPlayer(ctx, s, abilityId) {
+    const ball = brasaBallState(s);
+    if (!ball) { drawPlayerNoFire(ctx, s, abilityId); return; }
+    const rachaOn = s.rachaChargeT > 0 || s.dashT > 0 || s.rachaReveal > 0 || !!(s.rachaTrail && s.rachaTrail.length > 1);
+    if (rachaOn) drawPlayerNoFire(ctx, s, abilityId);
+    else if (ball.cover < 0.02) drawPlayerBody(ctx, s, abilityId);
+    else drawPlayerFaded(ctx, s, abilityId, 1 - ball.cover);
+    drawBrasaBall(ctx, s.player.x, s.player.y, s.rachaClock || 0, ball);
+  }
+
+  function drawPlayerNoFire(ctx, s, abilityId) {
     const charging = s.rachaChargeT > 0;
     const dashing = s.dashT > 0;
     const revealing = s.rachaReveal > 0;
@@ -4366,7 +5924,7 @@ function ChaseGame({
   function drawPlayerBodyRaw(ctx, s, abilityId) {
     const { x, y } = s.player;
     const bodyColor = s.playerColor || "#2B2A28";
-    const stealthActive = s.activeEffectAbility === "sigilo" && s.activeEffectT > 0;
+    const stealthActive = false;
 
     if (s.characterKind && s.characterKind !== "stickman") {
       ctx.save();
@@ -4766,6 +6324,36 @@ function ChaseGame({
       ctx.lineTo(lHandX, lHandY);
       ctx.moveTo(x, hipY - 7);
       ctx.lineTo(rHandX, rHandY);
+    } else if (s.brasaArms && s.brasaArms.k > 0) {
+      // súper Brasa: los dos brazos se extienden hacia las paredes, con las palmas abiertas
+      const ba = s.brasaArms, kk = ba.k;
+      const shY = hipY - 7;
+      const reach = 20 * kk;
+      const hands = [];
+      [ba.a, ba.b].forEach((d) => {
+        const hx = x + d.x * reach, hy = shY + d.y * reach - 1.5 * kk;
+        const ex = x + d.x * reach * 0.5 - d.y * 1.8 * (1 - 0.6 * kk), ey = shY + d.y * reach * 0.5 + d.x * 1.8 * (1 - 0.6 * kk);
+        ctx.moveTo(x, shY);
+        ctx.lineTo(ex, ey);
+        ctx.lineTo(hx, hy);
+        hands.push([hx, hy, d]);
+      });
+      lHandX = hands[0][0]; lHandY = hands[0][1];
+      rHandX = hands[1][0]; rHandY = hands[1][1];
+      ctx.stroke();
+      // dedos abiertos en abanico hacia la pared
+      ctx.lineWidth = 1.3;
+      hands.forEach(([hx, hy, d]) => {
+        const ha = Math.atan2(d.y, d.x);
+        [-0.55, -0.18, 0.18, 0.55].forEach((off) => {
+          ctx.beginPath();
+          ctx.moveTo(hx, hy);
+          ctx.lineTo(hx + Math.cos(ha + off) * 4.6 * kk, hy + Math.sin(ha + off) * 4.6 * kk);
+          ctx.stroke();
+        });
+      });
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
     } else if (s.faseArm > 0) {
       // Fase: un brazo cuelga y el otro se extiende hacia el portal con la mano abierta
       const fa = s.faseArm;
@@ -4931,154 +6519,82 @@ function ChaseGame({
 
   return (
     <div
-      className="flex flex-col items-center py-1 px-2 landscape-fill game-root"
+      className="w-full flex flex-col items-center py-4 px-3 game-root"
       style={{
         background: "#F4F1E9",
         fontFamily: "'Patrick Hand', cursive",
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: viewportW ? `${viewportW}px` : "100vw",
-        height: viewportH ? `${viewportH}px` : "100vh",
-        touchAction: hud.status === "playing" ? "none" : "pan-y",
-        overscrollBehavior: "contain",
+        minHeight: "100vh",
+        touchAction: "pan-y",
         userSelect: "none",
-        overflowY: hud.status === "menu" ? "auto" : "hidden",
-        boxSizing: "border-box",
       }}
     >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Kalam:wght@400;700&display=swap');
         .marker{font-family:'Kalam',cursive;}
-        .rotate-hint{ display: none; }
-        /* El "marco" del juego nunca tiene ancho/alto fijo: solo un tope máximo
-           de ancho Y de alto a la vez (100% del espacio que le da .game-stage),
-           manteniendo siempre la proporción 640x420. El navegador elige el
-           tamaño más grande posible que respete ambos topes — así el juego
-           jamás se sale de la pantalla, se achique lo que se achique. */
-        /* .game-stage centra el marco en el espacio disponible. El tamaño
-           exacto del marco (en píxeles, calculado en JS para no deformar
-           nada) se aplica como estilo inline en frameSize — acá solo dejamos
-           un tamaño de arranque razonable para el primer instante, antes de
-           que el efecto JS mida y ajuste. */
-        .game-stage{
-          position: relative;
-          flex: 1 1 auto;
-          min-height: 0;
-          min-width: 0;
-          width: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .game-frame{
-          position: relative;
-          max-width: 100%;
-          max-height: 100%;
-        }
-        .game-frame canvas{
-          display: block;
-          width: 100%;
-          height: 100%;
-        }
-        @media (orientation: portrait) and (max-width: 900px) {
-          .rotate-hint{
-            display: flex !important;
-            position: fixed; inset: 0; z-index: 100;
-            align-items: center; justify-content: center; text-align: center;
-            background: #12100E; color: #F4F1E9; padding: 24px;
-          }
-        }
-        /* En horizontal (el único modo real de juego — en vertical se tapa
-           todo con .rotate-hint) sacamos título/subtítulo y achicamos
-           paddings/márgenes SIEMPRE, no solo en pantallas muy bajas, para
-           que el marco del juego (que mantiene su proporción) llegue a su
-           tamaño máximo real dentro de la pantalla. */
-        @media (orientation: landscape) {
-          .landscape-fill{ padding-top: 2px !important; padding-bottom: 2px !important; padding-left: 4px !important; padding-right: 4px !important; }
-          .landscape-fill h1{ display: none; }
-          .landscape-fill .landscape-hide{ display: none !important; }
-          .landscape-fill .hud-bar{ margin-bottom: 3px !important; }
-        }
       `}</style>
 
-      <div className="rotate-hint">
-        <div>
-          <div style={{ fontSize: 40, marginBottom: 8 }}>🔄</div>
-          <p className="marker text-lg">Girá tu teléfono para jugar en horizontal</p>
-        </div>
-      </div>
-
       <h1 className="marker text-2xl sm:text-3xl mb-0.5" style={{ color: "#2B2A28" }}>La persecución</h1>
-      <p className="text-xs sm:text-sm mb-3 text-center landscape-hide" style={{ color: "#5B5850" }}>
+      <p className="text-xs sm:text-sm mb-3 text-center" style={{ color: "#5B5850" }}>
         Desliza el joystick para moverte · Toca el botón para tu habilidad
       </p>
 
       {hud.status === "menu" && (
         <div
-          className="mb-4 rounded-lg border-2 w-full max-w-md flex flex-col"
-          style={{
-            borderColor: "#2B2A28",
-            background: "#FBFAF5",
-            maxHeight: viewportH ? `${Math.max(180, viewportH - 24)}px` : "90vh",
-          }}
+          className="mb-4 p-4 rounded-lg border-2 w-full max-w-md"
+          style={{ borderColor: "#2B2A28", background: "#FBFAF5" }}
         >
-          <div className="p-4 pb-2 overflow-y-auto" style={{ minHeight: 0, flex: "1 1 auto" }}>
-            {onBackToCreator && (
-              <button
-                onClick={onBackToCreator}
-                className="text-xs marker mb-2 underline"
-                style={{ color: "#5B5850" }}
-              >
-                ‹ Volver al creador de personaje
-              </button>
-            )}
-            {playerName && (
-              <p className="text-sm mb-1" style={{ color: "#5B5850" }}>Jugando como <strong>{playerName}</strong></p>
-            )}
-            {characterKind !== "stickman" ? (
-              <>
-                <p className="marker text-lg mb-2" style={{ color: "#2B2A28" }}>
-                  {ANIMAL_KINDS[characterKind].label}
-                </p>
-                <div className="grid grid-cols-2 gap-2 mb-1">
-                  {ANIMAL_KINDS[characterKind].abilities.map((id, i) => {
-                    const a = ABILITIES[id];
-                    return (
-                      <div key={id} className="p-2.5 rounded border-2 text-left" style={{ borderColor: a.accent, background: `${a.accent}14` }}>
-                        <span className="marker text-base" style={{ color: "#2B2A28" }}>{a.name}</span>
-                        <div className="text-xs" style={{ color: "#5B5850" }}>{i === 0 ? "Toque" : "Mantener presionado"}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="marker text-lg mb-2" style={{ color: "#2B2A28" }}>Elige tu habilidad para huir</p>
-                <div className="grid grid-cols-2 gap-2 mb-1">
-                  {Object.entries(ABILITIES).map(([id, a]) => (
-                    <button key={id} onClick={() => setPick(id)}
-                      className="p-2.5 rounded border-2 text-left active:scale-95 transition-transform"
-                      style={{ borderColor: pick === id ? a.accent : "#D8D3C4", background: pick === id ? `${a.accent}14` : "#fff" }}>
-                      <span className="marker text-base" style={{ color: "#2B2A28" }}>{a.name}</span>
-                      <div className="text-xs" style={{ color: "#5B5850" }}>{a.tag}</div>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-          <div className="p-4 pt-2" style={{ flex: "0 0 auto" }}>
-            <button onClick={() => reset(characterKind !== "stickman" ? initialAbility : pick)} className="w-full py-3 rounded marker text-lg active:scale-95 transition-transform" style={{ background: "#2B2A28", color: "#F4F1E9" }}>
-              Empezar
+          {onBackToCreator && (
+            <button
+              onClick={onBackToCreator}
+              className="text-xs marker mb-2 underline"
+              style={{ color: "#5B5850" }}
+            >
+              ‹ Volver al creador de personaje
             </button>
-          </div>
+          )}
+          {playerName && (
+            <p className="text-sm mb-1" style={{ color: "#5B5850" }}>Jugando como <strong>{playerName}</strong></p>
+          )}
+          {characterKind !== "stickman" ? (
+            <>
+              <p className="marker text-lg mb-2" style={{ color: "#2B2A28" }}>
+                {ANIMAL_KINDS[characterKind].label}
+              </p>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                {ANIMAL_KINDS[characterKind].abilities.map((id, i) => {
+                  const a = ABILITIES[id];
+                  return (
+                    <div key={id} className="p-2.5 rounded border-2 text-left" style={{ borderColor: a.accent, background: `${a.accent}14` }}>
+                      <span className="marker text-base" style={{ color: "#2B2A28" }}>{a.name}</span>
+                      <div className="text-xs" style={{ color: "#5B5850" }}>{i === 0 ? "Toque" : "Mantener presionado"}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="marker text-lg mb-2" style={{ color: "#2B2A28" }}>Elige tu habilidad para huir</p>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                {Object.entries(ABILITIES).map(([id, a]) => (
+                  <button key={id} onClick={() => setPick(id)}
+                    className="p-2.5 rounded border-2 text-left active:scale-95 transition-transform"
+                    style={{ borderColor: pick === id ? a.accent : "#D8D3C4", background: pick === id ? `${a.accent}14` : "#fff" }}>
+                    <span className="marker text-base" style={{ color: "#2B2A28" }}>{a.name}</span>
+                    <div className="text-xs" style={{ color: "#5B5850" }}>{a.tag}</div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          <button onClick={() => reset(characterKind !== "stickman" ? initialAbility : pick)} className="w-full py-3 rounded marker text-lg active:scale-95 transition-transform" style={{ background: "#2B2A28", color: "#F4F1E9" }}>
+            Empezar
+          </button>
         </div>
       )}
 
       {hud.status !== "menu" && (
-        <div className="flex items-center gap-3 mb-2 w-full max-w-[640px] justify-between px-1 hud-bar">
+        <div className="flex items-center gap-3 mb-2 w-full max-w-[640px] justify-between px-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs sm:text-sm marker" style={{ color: "#5B5850" }}>Nivel {hud.level + 1}</span>
             {playerName && (
@@ -5122,21 +6638,82 @@ function ChaseGame({
         </div>
       )}
 
-      <div className="game-stage" ref={stageRef}>
       <div
-        className="relative rounded-lg border-2 game-frame"
-        style={{
-          borderColor: "#2B2A28",
-          boxShadow: "3px 3px 0 #2B2A28",
-          ...(frameSize ? { width: frameSize.w, height: frameSize.h } : { width: "100%", aspectRatio: `${VIEW_W} / ${VIEW_H}` }),
-        }}
+        className="relative rounded-lg border-2 w-full"
+        style={{ borderColor: "#2B2A28", boxShadow: "3px 3px 0 #2B2A28", maxWidth: 640, aspectRatio: `${VIEW_W} / ${VIEW_H}` }}
       >
         <canvas
           ref={canvasRef}
           width={VIEW_W}
           height={VIEW_H}
-          style={{ display: "block", width: "100%", height: "100%", borderRadius: 6 }}
+          style={{ width: "100%", height: "100%", display: "block", borderRadius: 6 }}
         />
+
+        {hud.status === "playing" && (
+          <>
+            <div
+              ref={joyZoneRef}
+              onPointerDown={onJoyDown}
+              onPointerMove={onJoyMove}
+              onPointerUp={onJoyUp}
+              onPointerCancel={onJoyUp}
+              className="absolute rounded-full"
+              style={{
+                left: 14, bottom: 14, width: 96, height: 96,
+                background: "rgba(43,42,40,0.10)",
+                border: "2px solid #2B2A28",
+                touchAction: "none",
+              }}
+            >
+              <div
+                className="absolute rounded-full"
+                style={{
+                  width: 40, height: 40, background: "#2B2A28", opacity: thumb.active ? 0.85 : 0.5,
+                  left: "50%", top: "50%",
+                  transform: `translate(-50%, -50%) translate(${thumb.x}px, ${thumb.y}px)`,
+                }}
+              />
+            </div>
+
+            <button
+              onPointerDown={onAbilityDown}
+              onPointerUp={onAbilityUp}
+              onPointerCancel={onAbilityUp}
+              onPointerLeave={onAbilityUp}
+              className="absolute rounded-full flex items-center justify-center marker text-center leading-tight"
+              style={{
+                right: 14, bottom: 14, width: 74, height: 74,
+                background: `${ab.accent}CC`,
+                border: "3px solid #2B2A28",
+                color: "#FBFAF5",
+                fontSize: 13,
+                touchAction: "none",
+              }}
+            >
+              {ab.name}
+            </button>
+
+            {secondaryAbility && (
+              <button
+                onPointerDown={onSecondaryDown}
+                onPointerUp={onSecondaryUp}
+                onPointerCancel={onSecondaryUp}
+                onPointerLeave={onSecondaryUp}
+                className="absolute rounded-full flex items-center justify-center marker text-center leading-tight"
+                style={{
+                  right: 100, bottom: 14, width: 62, height: 62,
+                  background: `${ABILITIES[secondaryAbility].accent}CC`,
+                  border: "3px solid #2B2A28",
+                  color: "#FBFAF5",
+                  fontSize: 11,
+                  touchAction: "none",
+                }}
+              >
+                {ABILITIES[secondaryAbility].name}
+              </button>
+            )}
+          </>
+        )}
 
         {(hud.status === "won" || hud.status === "lost") && (
           <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(251,250,245,0.92)" }}>
@@ -5154,82 +6731,6 @@ function ChaseGame({
             </div>
           </div>
         )}
-      </div>
-
-      {hud.status === "playing" && frameSize && (
-        <>
-          <div
-            className="absolute flex items-end justify-start"
-            style={{ left: 0, top: 0, bottom: 0, width: frameSize.sideZone, paddingBottom: "calc(30px + env(safe-area-inset-bottom, 0px))", paddingLeft: "calc(10px + env(safe-area-inset-left, 0px))" }}
-          >
-            <div
-              ref={joyZoneRef}
-              onPointerDown={onJoyDown}
-              onPointerMove={onJoyMove}
-              onPointerUp={onJoyUp}
-              onPointerCancel={onJoyUp}
-              className="relative rounded-full"
-              style={{
-                width: 96, height: 96,
-                background: "rgba(43,42,40,0.10)",
-                border: "2px solid #2B2A28",
-                touchAction: "none",
-              }}
-            >
-              <div
-                className="absolute rounded-full"
-                style={{
-                  width: 40, height: 40, background: "#2B2A28", opacity: thumb.active ? 0.85 : 0.5,
-                  left: "50%", top: "50%",
-                  transform: `translate(-50%, -50%) translate(${thumb.x}px, ${thumb.y}px)`,
-                }}
-              />
-            </div>
-          </div>
-
-          <div
-            className="absolute flex flex-col items-end justify-end gap-2"
-            style={{ right: 0, top: 0, bottom: 0, width: frameSize.sideZone, paddingBottom: "calc(30px + env(safe-area-inset-bottom, 0px))", paddingRight: "calc(10px + env(safe-area-inset-right, 0px))" }}
-          >
-            {secondaryAbility && (
-              <button
-                onPointerDown={onSecondaryDown}
-                onPointerUp={onSecondaryUp}
-                onPointerCancel={onSecondaryUp}
-                onPointerLeave={onSecondaryUp}
-                className="rounded-full flex items-center justify-center marker text-center leading-tight"
-                style={{
-                  width: 62, height: 62,
-                  background: `${ABILITIES[secondaryAbility].accent}CC`,
-                  border: "3px solid #2B2A28",
-                  color: "#FBFAF5",
-                  fontSize: 11,
-                  touchAction: "none",
-                }}
-              >
-                {ABILITIES[secondaryAbility].name}
-              </button>
-            )}
-            <button
-              onPointerDown={onAbilityDown}
-              onPointerUp={onAbilityUp}
-              onPointerCancel={onAbilityUp}
-              onPointerLeave={onAbilityUp}
-              className="rounded-full flex items-center justify-center marker text-center leading-tight"
-              style={{
-                width: 74, height: 74,
-                background: `${ab.accent}CC`,
-                border: "3px solid #2B2A28",
-                color: "#FBFAF5",
-                fontSize: 13,
-                touchAction: "none",
-              }}
-            >
-              {ab.name}
-            </button>
-          </div>
-        </>
-      )}
       </div>
     </div>
   );
@@ -5312,12 +6813,14 @@ function PreviewStickman({ color, ability }) {
         </g>
       )}
 
-      {ability === "clon" && (
-        <g opacity="0.4" transform="translate(-22,10)">
-          <circle cx="110" cy="55" r="26" fill="#9B4F96" stroke="none" />
-          <line x1="110" y1="81" x2="110" y2="190" stroke="#9B4F96" strokeWidth="6" strokeLinecap="round" />
-          <line x1="110" y1="190" x2="75" y2="260" stroke="#9B4F96" strokeWidth="6" strokeLinecap="round" />
-          <line x1="110" y1="190" x2="145" y2="260" stroke="#9B4F96" strokeWidth="6" strokeLinecap="round" />
+      {ability === "luz" && (
+        <g stroke="#FFE066" strokeWidth="2.4" fill="none" strokeLinecap="round">
+          <circle cx="150" cy="120" r="10" fill="#FFF6D8" stroke="none">
+            <animate attributeName="r" values="8;12;8" dur="0.7s" repeatCount="indefinite" />
+          </circle>
+          <path d="M60 60 L120 108 M60 180 L120 132 M40 120 L118 120" strokeWidth="3">
+            <animate attributeName="opacity" values="0.3;1;0.3" dur="0.6s" repeatCount="indefinite" />
+          </path>
         </g>
       )}
 
@@ -5380,22 +6883,12 @@ function PreviewStickman({ color, ability }) {
         </g>
       )}
 
-      {ability === "sierra" && (
-        <>
-          {[{ cx: 60, cy: 150 }, { cx: 160, cy: 150 }].map((p, i) => (
-            <g key={i} transform={`translate(${p.cx},${p.cy})`}>
-              <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="0.6s" repeatCount="indefinite" additive="sum" />
-              <circle r="14" fill="#B7BEC4" />
-              {Array.from({ length: 8 }).map((_, k) => {
-                const a = (k / 8) * Math.PI * 2;
-                return (
-                  <line key={k} x1={Math.cos(a) * 12} y1={Math.sin(a) * 12} x2={Math.cos(a) * 20} y2={Math.sin(a) * 20} stroke="#4A4E52" strokeWidth="2" />
-                );
-              })}
-              <circle r="4" fill="#5C6266" />
-            </g>
-          ))}
-        </>
+      {ability === "metal" && (
+        <g>
+          <circle cx="110" cy="146" r="26" fill="none" stroke="#F0F5FA" strokeWidth="2" opacity="0.8">
+            <animate attributeName="stroke-dasharray" values="0 165;165 165" dur="1s" repeatCount="indefinite" />
+          </circle>
+        </g>
       )}
 
       {ability === "tornado" && (
@@ -5424,7 +6917,7 @@ function PreviewStickman({ color, ability }) {
         strokeWidth="6"
         strokeLinecap="round"
         fill="none"
-        opacity={ability === "sigilo" ? 0.42 : 1}
+        opacity={1}
       >
         <circle cx="110" cy="55" r="26" fill={color} stroke="none" />
         <line x1="110" y1="81" x2="110" y2="190" />
@@ -5434,11 +6927,14 @@ function PreviewStickman({ color, ability }) {
         <line x1="110" y1="190" x2="145" y2="260" />
       </g>
 
-      {ability === "sigilo" && (
-        <circle cx="110" cy="30" r="9" fill="none" stroke="#7A5EA8" strokeWidth="2">
-          <animate attributeName="r" values="7;13;7" dur="1.6s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.9;0.15;0.9" dur="1.6s" repeatCount="indefinite" />
-        </circle>
+      {ability === "muerte" && (
+        <g>
+          <circle cx="110" cy="140" r="70" fill="none" stroke="#7B1FA2" strokeWidth="3" opacity="0.6">
+            <animate attributeName="r" values="55;75;55" dur="1.4s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.7;0.25;0.7" dur="1.4s" repeatCount="indefinite" />
+          </circle>
+          <path d="M150 130 L172 130 A18 18 0 1 1 158 112" fill="none" stroke="#C77DFF" strokeWidth="4" strokeLinecap="round" />
+        </g>
       )}
     </svg>
   );
