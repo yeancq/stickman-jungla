@@ -2,21 +2,22 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from "react"
 
 const ABILITIES = {
   viento: { price: 0, name: "Racha", accent: "#3B7FA8", cd: 3.5, dur: 1.6, tag: "Velocidad", desc: "Deja una estela de viento y esquiva al monstruo en línea recta.", stat: "Dash x2.1 · recarga 3.5s" },
-  sigilo: { price: 35, name: "Bruma", accent: "#7A5EA8", cd: 5.5, dur: 2.6, tag: "Sigilo", desc: "Se vuelve casi transparente; el monstruo pierde el rastro.", stat: "2.6s invisible · recarga 5.5s" },
+  muerte: { price: 55, name: "Muerte", accent: "#7B1FA2", cd: 7.5, dur: 0, tag: "Muerte", desc: "El juego se pausa y el personaje brilla en un morado intenso; crea una hoz gigante y aparece de golpe junto al monstruo, cortándolo por la mitad y quitándole 2 vidas. Súper: antes se acerca a una pared, la toca y esta brilla en morado antes de desaparecer y dar el golpe.", stat: "Quita 2 vidas al monstruo · recarga 7.5s" },
   tiempo: { price: 45, name: "Tiempo", accent: "#3FA089", cd: 6, dur: 3, tag: "Congelar", desc: "Lanza un reloj verde que detiene el tiempo para todos unos segundos.", stat: "Congela 3s · recarga 6s" },
-  clon: { price: 45, name: "Clon", accent: "#9B4F96", cd: 8, dur: 6, tag: "Señuelo", desc: "Deja un doble; si el monstruo te atrapa mientras dura, el clon se sacrifica y no perdés vidas.", stat: "Dura 6s · recarga 8s" },
-  fase: { price: 35, name: "Fase", accent: "#2E93A6", cd: 4.5, dur: 0, tag: "Teletransporte", desc: "Te mueve varios pasos hacia adelante, atravesando cualquier pared en el camino.", stat: "~120px · recarga 4.5s" },
+  luz: { price: 45, name: "Luz", accent: "#FFE066", cd: 6.5, dur: 0, tag: "Aturdimiento", desc: "El juego se pausa, el personaje se gira hacia el monstruo y lanza un ultra gigantesco rayo de luz desde las manos que lo aturde. Súper: el personaje brilla con una luz intensa y se teletransporta.", stat: "Aturde ~3.2s · recarga 6.5s" },
+  fase: { price: 35, name: "Fase", accent: "#2E93A6", cd: 4.5, dur: 0, tag: "Teletransporte", desc: "Extiende la mano, abre un portal y salta al otro lado, atravesando cualquier pared en el camino.", stat: "~120px · recarga 4.5s" },
   electrico: { price: 40, name: "Descarga", accent: "#C9A227", cd: 5.5, dur: 0, tag: "Aturdimiento", desc: "Lanza un rayo amarillo que paraliza al monstruo un rato al impactar.", stat: "Paraliza ~2.6s · recarga 5.5s" },
-  fuego: { price: 35, name: "Brasa", accent: "#E8460F", cd: 5, dur: 2.2, tag: "Fuego", desc: "Deja un rastro de llamas vivas que queman al monstruo si se acerca.", stat: "2.2s de rastro · recarga 5s" },
-  mutar: { price: 45, name: "Mutar", accent: "#4C9A2A", cd: 6, dur: 3, tag: "Veneno", desc: "Le crece una cola y corre a cuatro patas; lanza gas verde que paraliza al monstruo.", stat: "Paraliza ~2.9s · recarga 6s" },
+  fuego: { price: 35, name: "Brasa", accent: "#E8460F", cd: 5, dur: 2.2, tag: "Fuego", desc: "Una gran bola de fuego te envuelve tan brillante que no se te ve; si el monstruo se acerca, queda quemado. Súper: tus manos incendian por completo las paredes cercanas.", stat: "Bola de fuego 2.2s · recarga 5s" },
+  mutar: { price: 45, name: "Mutar", accent: "#4C9A2A", cd: 6, dur: 3, tag: "Veneno", desc: "Al moverte le crece una cola y corres a cuatro patas. El juego se pausa, el personaje se pone verde, levanta la mano y lanza una nube de gas verde que paraliza al monstruo. Súper: señala al monstruo y lanza montones de enredaderas que lo dejan aturdido más tiempo.", stat: "Paraliza ~2.9s (súper ~3.4s) · recarga 6s" },
   roquero: { price: 40, name: "Roquero", accent: "#D6336C", cd: 6, dur: 3.2, tag: "Baile", desc: "Lleva una guitarra eléctrica y lanza notas que ponen a bailar al monstruo.", stat: "Baila 3.2s · recarga 6s" },
   laser: { price: 60, name: "Láser", accent: "#E63946", cd: 7, dur: 0, tag: "Demolición", desc: "Dispara un láser desde la cabeza que rompe la primera pared que encuentra.", stat: "Rompe 1 pared · recarga 7s" },
-  sierra: { price: 45, name: "Sierra", accent: "#7C868D", cd: 8, dur: 4, tag: "Escudo", desc: "Dos sierras te rodean y te protegen de todo; si tocás un animal con ellas activas, desaparece.", stat: "Escudo 4s · recarga 8s" },
-  tornado: { price: 50, name: "Tornado", accent: "#5C8AA6", cd: 9, dur: 1.2, tag: "Torbellino", desc: "Giras y un tornado te arrastra a gran velocidad; lanza otro en sentido contrario que se lleva al monstruo si lo toca.", stat: "1.2s de impulso · recarga 9s" },
-  ladron: { price: 40, name: "Ladrón", accent: "#B8860B", cd: 7, dur: 0, tag: "Robo", desc: "Lanza un gancho que le roba una vida al monstruo; esa vida pasa a ser tuya.", stat: "Roba 1 vida · recarga 7s" },
+  metal: { price: 45, name: "Metal", accent: "#8A93A0", cd: 8, dur: 4, tag: "Blindaje", desc: "El juego se pausa y una capa de metal te recubre: corrés mucho más rápido y los ataques que te toquen rebotan de vuelta. Súper: apuntás ambas manos al frente y disparás 30 rayos de cada mano; donde caen forman bultos metálicos que sólo vos podés atravesar.", stat: "Blindaje 4s · recarga 8s" },
+  nova: { price: 50, name: "Nova", accent: "#FF7A1A", cd: 9, dur: 0, tag: "Explosivo", desc: "El juego se pausa: te volteas y de tus manos salen 70 triángulos que van a formarse en un punto frente a ti. Si el monstruo toca uno, todos explotan en cadena. Súper: te giras hacia el monstruo y disparas un rayo gigantesco de energía eléctrica y térmica.", stat: "70 triángulos · recarga 9s" },
+  ladron: { price: 40, name: "Ladrón", accent: "#B8860B", cd: 7, dur: 0, tag: "Robo", desc: "Lanza un gran rayo que le roba una vida al monstruo; esa vida pasa a ser tuya. Si el monstruo te toca, quedás cortado por la mitad hasta que uses el robo.", stat: "Roba 1 vida · recarga 7s" },
 };
 
-const VIEW_W = 640, VIEW_H = 420;
+const VIEW_W = 640;
+const VIEW_H = 420;
 const WORLD_W = 1700, WORLD_H = 420;
 
 const BORDER_WALLS = [
@@ -215,6 +216,1460 @@ const EXIT = { x: WORLD_W - 14, y: WORLD_H / 2 - 45, w: 14, h: 90 };
 const PLAYER_R = 12, MONSTER_R = 16;
 const SUPER_HOLD = 0.9;
 const PUDDLE_SLOW = 0.42;
+// Racha (velocidad): el juego se congela mientras el stickman se convierte en energía azul
+const RACHA_CHARGE_T = 1.15;   // segundos de pausa total + transformación
+const RACHA_REVEAL_T = 0.4;    // segundos que tarda en reaparecer el cuerpo al terminar la velocidad
+const RACHA_TRAIL_LIFE = 0.45; // duración de la estela de energía
+
+let _rachaOff = null; // canvas auxiliar para desvanecer el cuerpo de cualquier personaje
+
+function drawRachaTrail(ctx, s) {
+  const tr = s.rachaTrail;
+  if (!tr || tr.length < 2) return;
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  for (let i = 1; i < tr.length; i++) {
+    const a = tr[i - 1], b = tr[i];
+    if (Math.hypot(b.x - a.x, b.y - a.y) > 40) continue;
+    const k = Math.max(0, 1 - b.age / RACHA_TRAIL_LIFE);
+    ctx.strokeStyle = `rgba(40,120,255,${0.35 * k})`;
+    ctx.lineWidth = 4 + 18 * k;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    ctx.strokeStyle = `rgba(190,230,255,${0.9 * k})`;
+    ctx.lineWidth = 1.5 + 6 * k;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Estela de notas musicales que arrastran al personaje durante la súper de Roquero
+function drawRoqueroTrail(ctx, s) {
+  const tr = s.roqueroTrail;
+  if (!tr || !tr.length) return;
+  ctx.save();
+  ctx.font = "bold 13px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  tr.forEach((pt, i) => {
+    const k = Math.max(0, 1 - pt.age / ROQUERO_TRAIL_LIFE);
+    if (k <= 0.02) return;
+    ctx.globalAlpha = 0.75 * k;
+    ctx.fillStyle = ABILITIES.roquero.accent;
+    ctx.fillText(i % 2 === 0 ? "♪" : "♫", pt.x, pt.y);
+  });
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawRachaHalo(ctx, s, x, y, glow, charging, prog) {
+  const c = s.rachaClock || 0;
+  const cy = y - 2;
+  const pulse = 1 + Math.sin(c * 20) * 0.07;
+  const R = (charging ? 24 + 30 * (prog || 0) : 40) * pulse;
+  ctx.save();
+  const grd = ctx.createRadialGradient(x, cy, 2, x, cy, R);
+  grd.addColorStop(0, `rgba(140,210,255,${0.8 * glow})`);
+  grd.addColorStop(0.5, `rgba(50,130,255,${0.5 * glow})`);
+  grd.addColorStop(1, "rgba(40,110,255,0)");
+  ctx.fillStyle = grd;
+  ctx.beginPath();
+  ctx.arc(x, cy, R, 0, Math.PI * 2);
+  ctx.fill();
+  if (charging) {
+    const a = Math.min(1, (prog || 0) * 4);
+    // chispas de energía entrando hacia el stickman
+    ctx.lineCap = "round";
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 12; i++) {
+      const ph = (c * 1.6 + i * 0.173) % 1;
+      const ang = i * 2.399 + c * 2;
+      const d1 = R * 1.5 * (1 - ph) + 6;
+      const d2 = d1 + 8;
+      ctx.strokeStyle = `rgba(120,190,255,${a * (0.4 + 0.6 * ph)})`;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(ang) * d1, cy + Math.sin(ang) * d1);
+      ctx.lineTo(x + Math.cos(ang) * d2, cy + Math.sin(ang) * d2);
+      ctx.stroke();
+    }
+    // anillo de energía que se expande
+    const rp = (c * 1.2) % 1;
+    ctx.strokeStyle = `rgba(63,140,255,${a * (1 - rp) * 0.7})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, cy, 10 + rp * 40, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawRachaCore(ctx, s, x, y, glow) {
+  const c = s.rachaClock || 0;
+  const cy = y - 2;
+  const pulse = 1 + Math.sin(c * 26) * 0.08;
+  const r = 23 * pulse * (0.55 + 0.45 * glow);
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, glow * 1.15);
+  const g = ctx.createRadialGradient(x, cy, 1, x, cy, r);
+  g.addColorStop(0, "#FFFFFF");
+  g.addColorStop(0.35, "#BFE6FF");
+  g.addColorStop(0.75, "#3F8CFF");
+  g.addColorStop(1, "#1F5FE0");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(x, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#1650C8";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // zarcillos de energía girando alrededor del núcleo
+  ctx.strokeStyle = "rgba(223,242,255,0.85)";
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+  for (let i = 0; i < 3; i++) {
+    const a0 = c * 9 + (i * Math.PI * 2) / 3;
+    ctx.beginPath();
+    ctx.arc(x, cy, r + 4, a0, a0 + 0.9);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Fase (teletransporte): el juego se congela mientras el stickman extiende la mano, abre un portal
+// entre el espacio donde está y el que quiere cruzar, salta hacia él y reaparece del otro lado.
+const FASE_T = 1.3;         // segundos de pausa total
+const FASE_CLOSE_T = 0.4;   // segundos que tardan los portales en cerrarse (el juego ya corre)
+const FASE_DIST = 120;      // distancia del teletransporte
+const FASE_PORTAL_A = 27;   // semieje del portal, perpendicular a la dirección del salto
+const FASE_PORTAL_B = 10;   // semieje del portal, a lo largo de la dirección del salto
+
+const smooth01 = (k) => { const q = Math.max(0, Math.min(1, k)); return q * q * (3 - 2 * q); };
+const seg01 = (p, a, b) => Math.max(0, Math.min(1, (p - a) / (b - a)));
+const easeOutBack = (k) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2); };
+
+// línea de tiempo de la pausa (p = 0..1)
+function faseTimeline(p) {
+  return {
+    arm: smooth01(seg01(p, 0.02, 0.26)) * (1 - smooth01(seg01(p, 0.9, 1))), // mano extendida
+    spark: seg01(p, 0.08, 0.2) * (1 - seg01(p, 0.3, 0.42)),                 // chispa en la punta de los dedos
+    entry: easeOutBack(seg01(p, 0.14, 0.42)),                               // apertura del portal de entrada
+    exit: easeOutBack(seg01(p, 0.28, 0.54)),                                // apertura del portal de salida
+    link: smooth01(seg01(p, 0.3, 0.52)),                                    // eje que une ambos portales
+    crouch: seg01(p, 0.44, 0.52),                                           // agacharse antes de saltar
+    jump: seg01(p, 0.52, 0.8),                                              // salto hacia el portal
+    emerge: seg01(p, 0.8, 1),                                               // sale por el segundo portal
+  };
+}
+
+// Ladrón (robo de vida): si el monstruo toca al stickman queda cortado por la mitad. Al usar la habilidad
+// (o la súper) el juego se pausa: primero las dos mitades se vuelven a unir (si estaba cortado) y, tras una
+// segunda pausa, lanza un gran rayo al monstruo; por medio del rayo le roba la vida y todo vuelve a la normalidad.
+const LADRON_JOIN_T = 1.0;        // pausa 1: las mitades vuelven a unirse (solo si estaba cortado)
+const LADRON_RAY_T = 1.9;         // pausa 2: el rayo (habilidad normal)
+const LADRON_RAY_SUPER_T = 2.3;   // pausa 2: el rayo (súper habilidad)
+const LADRON_CUT_FX_T = 0.95;     // duración del tajo al ser tocado
+const LADRON_GAP = 2.6;           // separación (px) de cada mitad mientras está cortado
+const LADRON_CUT_A = -0.3;        // inclinación de la línea de corte (rad)
+let _cutOff = null;               // canvas auxiliar para partir el cuerpo de cualquier personaje
+
+const easeOutCubic = (k) => 1 - Math.pow(1 - k, 3);
+const hsh = (k) => { const v = Math.sin(k * 12.9898) * 43758.5453; return v - Math.floor(v); };
+
+function ladronPhase(fx, remaining) {
+  const el = Math.max(0, fx.total - remaining);
+  if (el < fx.joinT) return { phase: "join", p: el / fx.joinT, el };
+  return { phase: "ray", p: Math.min(1, (el - fx.joinT) / fx.rayT), el };
+}
+
+// línea de tiempo de la pausa del rayo (p = 0..1)
+function ladronTimeline(p) {
+  return {
+    arm: smooth01(seg01(p, 0.03, 0.22)) * (1 - smooth01(seg01(p, 0.86, 0.99))), // brazo extendido hacia el monstruo
+    charge: seg01(p, 0.05, 0.32),                                                // la energía se acumula en la mano
+    head: easeOutCubic(seg01(p, 0.32, 0.5)),                                     // la punta del rayo viaja hasta el monstruo
+    beam: seg01(p, 0.32, 0.36) * (1 - smooth01(seg01(p, 0.82, 0.95))),           // visibilidad del rayo
+    hit: seg01(p, 0.5, 0.66),                                                    // impacto
+    drain: seg01(p, 0.58, 0.86),                                                 // la vida viaja de vuelta por el rayo
+    land: seg01(p, 0.82, 0.98),                                                  // la vida llega al stickman
+    pan: smooth01(seg01(p, 0.32, 0.5)) * (1 - smooth01(seg01(p, 0.64, 0.9))),   // la cámara acompaña al rayo y vuelve
+  };
+}
+
+function startLadron(s, superMode) {
+  const alive = !s.monsterDefeated && s.monsterLives > 0;
+  if (!alive) {
+    // sin monstruo al que robarle la vida: la súper solo cura (y el stickman se une); la normal no hace nada
+    if (superMode) { s.lives = Math.max(s.lives, 5); s.ladronCut = false; }
+    return;
+  }
+  const wasCut = !!s.ladronCut;
+  const hx = s.player.x, hy = s.player.y - 5;
+  const dx = s.monster.x - hx, dy = s.monster.y - hy;
+  const d = Math.hypot(dx, dy) || 1;
+  const joinT = wasCut ? LADRON_JOIN_T : 0;
+  const rayT = superMode ? LADRON_RAY_SUPER_T : LADRON_RAY_T;
+  s.ladronFx = {
+    superMode, wasCut, joinT, rayT,
+    total: joinT + rayT,
+    applyAt: joinT + rayT * 0.84,
+    dx: dx / d, dy: dy / d,
+    gain: superMode ? Math.max(0, 5 - s.lives) : 1,
+    applied: false,
+  };
+  s.ladronT = joinT + rayT;
+  s.ladronCut = false;
+  s.moving = false;
+  if (superMode) s.superFx = null;
+}
+
+// Muerte: el juego se pausa y se enfoca en el personaje, que brilla en un morado intenso y
+// hace crecer una hoz gigante; de golpe aparece junto al monstruo y lo corta por la mitad,
+// quitándole 2 vidas. Súper: antes de eso, el personaje se acerca a la pared más cercana, la
+// toca (la pared brilla en morado) y desaparece justo ahí antes de dar el golpe.
+const MUERTE_WALL_T = 1.3;         // súper: acercarse y tocar la pared
+const MUERTE_STRIKE_T = 1.9;       // habilidad normal: brillo + hoz + corte
+const MUERTE_STRIKE_SUPER_T = 1.9; // lo mismo, después de la fase de la pared
+const MUERTE_CUT_A = 0.5;          // inclinación del tajo sobre el monstruo (rad)
+const MUERTE_CUT_FX_T = 0.9;       // duración del tajo visible sobre el monstruo
+let _muerteOff = null;             // canvas auxiliar para teñir de morado a cualquier personaje
+let _luzOff = null;                // canvas auxiliar para teñir de blanco-dorado a cualquier personaje
+
+function muertePhase(fx, remaining) {
+  const el = Math.max(0, fx.total - remaining);
+  if (fx.wallT > 0 && el < fx.wallT) return { phase: "wall", p: el / fx.wallT, el };
+  return { phase: "strike", p: Math.min(1, (el - fx.wallT) / fx.strikeT), el };
+}
+
+// línea de tiempo de la fase de la pared (solo súper, p = 0..1)
+function muerteWallTimeline(p) {
+  return {
+    walk: easeOutCubic(seg01(p, 0, 0.5)),                                            // camina hacia la pared
+    reach: smooth01(seg01(p, 0.38, 0.58)),                                            // extiende el brazo
+    wallGlow: smooth01(seg01(p, 0.52, 0.86)) * (1 - smooth01(seg01(p, 0.96, 1))),      // la pared brilla morado
+    fade: smooth01(seg01(p, 0.72, 0.98)),                                             // desaparece junto a la pared
+  };
+}
+
+// línea de tiempo del brillo + hoz + corte (p = 0..1)
+function muerteStrikeTimeline(p) {
+  return {
+    glow: smooth01(seg01(p, 0, 0.22)) * (1 - smooth01(seg01(p, 0.9, 1))),             // aura morada intensa
+    scytheA: smooth01(seg01(p, 0.14, 0.28)) * (1 - smooth01(seg01(p, 0.86, 1))),       // opacidad de la hoz
+    scythe: easeOutCubic(seg01(p, 0.16, 0.4)),                                         // crecimiento de la hoz
+    vanish: smooth01(seg01(p, 0.4, 0.5)),                                             // se desvanece en su lugar
+    strike: easeOutCubic(seg01(p, 0.5, 0.62)),                                         // el tajo junto al monstruo
+    impact: smooth01(seg01(p, 0.56, 0.74)) * (1 - smooth01(seg01(p, 0.92, 1))),        // destello del corte
+    pan: smooth01(seg01(p, 0.48, 0.62)) * (1 - smooth01(seg01(p, 0.72, 0.92))),        // la cámara acompaña el salto
+    ret: smooth01(seg01(p, 0.82, 1)),                                                  // reaparece en su lugar
+  };
+}
+
+function startMuerte(s, superMode, nearWall) {
+  const alive = !s.monsterDefeated && s.monsterLives > 0;
+  const wallT = superMode && nearWall ? MUERTE_WALL_T : 0;
+  const strikeT = superMode ? MUERTE_STRIKE_SUPER_T : MUERTE_STRIKE_T;
+  let wall = null;
+  if (wallT > 0) {
+    const px = s.player.x, py = s.player.y;
+    const wl = nearWall.wl;
+    const ox = Math.max(wl.x, Math.min(px, wl.x + wl.w));
+    const oy = Math.max(wl.y, Math.min(py, wl.y + wl.h));
+    const dx = ox - px, dy = oy - py;
+    const dl = Math.hypot(dx, dy) || 1;
+    const stop = 15;
+    wall = {
+      touchX: ox, touchY: oy,
+      walkToX: ox - (dx / dl) * stop, walkToY: oy - (dy / dl) * stop,
+      dir: { x: dx / dl, y: dy / dl },
+      fromX: px, fromY: py,
+    };
+  }
+  s.muerteFx = {
+    superMode, wallT, strikeT,
+    total: wallT + strikeT,
+    applyAt: wallT + strikeT * 0.62,
+    fromX: s.player.x, fromY: s.player.y,
+    monsterX: s.monster.x, monsterY: s.monster.y,
+    wall,
+    applied: !alive,
+  };
+  s.muerteT = wallT + strikeT;
+  s.moving = false;
+  if (superMode) s.superFx = null;
+}
+
+// Tiempo (congelar): el juego se pausa mientras el stickman se voltea hacia el monstruo,
+// extiende el brazo y dispara una esfera verde brillante que lo paraliza al llegar.
+const TIEMPO_T = 1.2;        // segundos de pausa total (habilidad normal)
+const TIEMPO_SPHERE_R = 22;  // radio base de la esfera (grande y bien visible)
+
+// línea de tiempo de la pausa de Tiempo (p = 0..1)
+function tiempoTimeline(p) {
+  return {
+    arm: smooth01(seg01(p, 0.04, 0.28)) * (1 - smooth01(seg01(p, 0.94, 1))), // se voltea y extiende el brazo
+    charge: seg01(p, 0.08, 0.4),                                             // la esfera se forma en la mano
+    travel: easeOutCubic(seg01(p, 0.4, 0.86)),                                // la esfera viaja hacia el monstruo
+    hit: seg01(p, 0.86, 1),                                                   // impacto y congelamiento
+  };
+}
+
+function startTiempo(s, dur) {
+  const hx = s.player.x, hy = s.player.y - 5;
+  const dx = s.monster.x - hx, dy = s.monster.y - hy;
+  const d = Math.hypot(dx, dy) || 1;
+  s.tiempoFx = { dx: dx / d, dy: dy / d, dur };
+  s.tiempoT = TIEMPO_T;
+  s.moving = false;
+}
+
+// Súper Tiempo: el juego se pausa mientras el stickman salta y aterriza sobre una motocicleta
+// cuyas ruedas son relojes analógicos; al arrancar obtiene la misma velocidad e inmunidad que Racha.
+const MOTO_T = 1.0; // segundos de pausa total antes de arrancar
+
+function motoTimeline(p) {
+  return {
+    crouch: seg01(p, 0, 0.16),                    // se agacha para saltar
+    jump: seg01(p, 0.14, 0.56),                    // arco del salto
+    bike: smooth01(seg01(p, 0.3, 0.6)),            // la motocicleta aparece debajo
+    rev: seg01(p, 0.66, 1),                        // arranca (las ruedas-reloj giran cada vez más rápido)
+  };
+}
+
+function startMotoSuper(s) {
+  s.motoFx = {};
+  s.motoT = MOTO_T;
+  s.moving = false;
+  s.superFx = null;
+}
+
+// Una rueda-reloj: esfera analógica con manecillas que giran a `spin` radianes
+function drawClockWheel(ctx, x, y, r, spin) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = "#155C42";
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#F4F1E9";
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#155C42";
+  ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = ABILITIES.tiempo.accent;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72);
+    ctx.lineTo(Math.cos(a) * r * 0.56, Math.sin(a) * r * 0.56);
+    ctx.stroke();
+  }
+  ctx.save();
+  ctx.rotate(spin);
+  ctx.strokeStyle = "#1A1917";
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(0, 0); ctx.lineTo(0, -r * 0.44);
+  ctx.moveTo(0, 0); ctx.lineTo(r * 0.3, r * 0.05);
+  ctx.stroke();
+  ctx.restore();
+  ctx.restore();
+}
+
+// La motocicleta de relojes: se dibuja debajo del jugador. k = 0..1 (aparición/escala), spin = giro de las ruedas
+function drawMotoBody(ctx, x, y, k, spin) {
+  if (k <= 0.01) return;
+  ctx.save();
+  ctx.globalAlpha = k;
+  const wr = 7.5 * Math.min(1, k * 1.5);
+  const wy = y + 9;
+  ctx.strokeStyle = "#2FAE7A";
+  ctx.lineWidth = 2.6;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x - 14, wy - 1);
+  ctx.lineTo(x - 3, wy - 9);
+  ctx.lineTo(x + 7, wy - 11);
+  ctx.lineTo(x + 13, wy - 1);
+  ctx.moveTo(x + 7, wy - 11);
+  ctx.lineTo(x + 16, wy - 17);
+  ctx.stroke();
+  ctx.strokeStyle = "#155C42";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x - 14, wy - 1);
+  ctx.lineTo(x - 3, wy - 9);
+  ctx.lineTo(x + 7, wy - 11);
+  ctx.lineTo(x + 13, wy - 1);
+  ctx.stroke();
+  drawClockWheel(ctx, x - 14, wy, wr, spin);
+  drawClockWheel(ctx, x + 13, wy, wr, spin * 1.02);
+  ctx.restore();
+}
+
+function drawHeartShape(ctx, x, y, size) {
+  ctx.beginPath();
+  ctx.moveTo(x, y + size * 0.9);
+  ctx.bezierCurveTo(x - size * 1.5, y - size * 0.1, x - size * 0.9, y - size * 1.2, x, y - size * 0.45);
+  ctx.bezierCurveTo(x + size * 0.9, y - size * 1.2, x + size * 1.5, y - size * 0.1, x, y + size * 0.9);
+  ctx.closePath();
+}
+
+// Gran rayo naranja con núcleo blanco, borde eléctrico y dos hebras entrelazadas (la energía vital)
+function drawLadronBeam(ctx, x1, y1, x2, y2, W, clock, alpha) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 2 || alpha <= 0.01) return;
+  const nx = -dy / len, ny = dx / len;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, alpha);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  [[W * 2.5, "rgba(255,90,20,0.18)"], [W * 1.7, "rgba(255,140,30,0.32)"], [W * 1.05, "rgba(255,190,70,0.9)"]].forEach(([w, c]) => {
+    ctx.strokeStyle = c;
+    ctx.lineWidth = w;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  });
+  ctx.strokeStyle = "rgba(255,251,235,0.97)";
+  ctx.lineWidth = W * 0.42;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  // borde eléctrico irregular
+  const seg = Math.max(5, Math.floor(len / 12));
+  const seed = Math.floor(clock * 24);
+  ctx.strokeStyle = "rgba(255,232,150,0.85)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let i = 0; i <= seg; i++) {
+    const t = i / seg;
+    const j = i === 0 || i === seg ? 0 : (hsh(i * 3.1 + seed * 7.7) - 0.5) * W * 1.7;
+    const qx = x1 + dx * t + nx * j, qy = y1 + dy * t + ny * j;
+    if (i === 0) ctx.moveTo(qx, qy); else ctx.lineTo(qx, qy);
+  }
+  ctx.stroke();
+  // dos hebras entrelazadas
+  const steps = Math.max(14, Math.floor(len / 5));
+  for (let k = 0; k < 2; k++) {
+    ctx.strokeStyle = k ? "rgba(255,70,30,0.95)" : "rgba(255,160,50,0.95)";
+    ctx.lineWidth = Math.max(1.6, W * 0.26);
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const env = Math.min(1, t * 7, (1 - t) * 7);
+      const off = Math.sin(t * len * 0.15 - clock * 17 + k * Math.PI) * W * 0.95 * env;
+      const qx = x1 + dx * t + nx * off, qy = y1 + dy * t + ny * off;
+      if (i === 0) ctx.moveTo(qx, qy); else ctx.lineTo(qx, qy);
+    }
+    ctx.stroke();
+  }
+  // cabeza del rayo
+  const hg = ctx.createRadialGradient(x2, y2, 0, x2, y2, W * 1.4);
+  hg.addColorStop(0, "rgba(255,255,240,0.95)");
+  hg.addColorStop(1, "rgba(255,150,40,0)");
+  ctx.fillStyle = hg;
+  ctx.beginPath(); ctx.arc(x2, y2, W * 1.4, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawLadronImpact(ctx, x, y, k, sustain, sup, clock) {
+  if (sustain <= 0.02 && k <= 0) return;
+  const sc = sup ? 1.35 : 1;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  const R = (22 + 8 * Math.sin(clock * 30)) * sc;
+  const g = ctx.createRadialGradient(x, y, 0, x, y, R);
+  g.addColorStop(0, `rgba(255,220,140,${0.75 * sustain})`);
+  g.addColorStop(1, "rgba(255,110,20,0)");
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.lineCap = "round";
+  for (let r = 0; r < 2; r++) {
+    const kk = Math.max(0, Math.min(1, k * 1.25 - r * 0.25));
+    if (kk <= 0 || kk >= 1) continue;
+    ctx.strokeStyle = `rgba(255,${150 + r * 50},50,${0.85 * (1 - kk)})`;
+    ctx.lineWidth = 3 - r;
+    ctx.beginPath(); ctx.arc(x, y, (10 + 50 * kk) * sc, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 12; i++) {
+    const ang = i * 0.5236 + Math.sin(clock * 20 + i) * 0.15;
+    const ph = (clock * 3.1 + i * 0.37) % 1;
+    const d1 = (12 + ph * 30) * sc, d2 = d1 + (6 + (i % 3) * 3) * sc * (1 - ph);
+    ctx.strokeStyle = `rgba(255,${190 + (i % 3) * 20},80,${0.9 * sustain * (1 - ph)})`;
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(ang) * d1, y + Math.sin(ang) * d1);
+    ctx.lineTo(x + Math.cos(ang) * d2, y + Math.sin(ang) * d2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function faseSpotFree(x, y, walls, spikes) {
+  const r = PLAYER_R + 2;
+  for (const wl of walls) {
+    const cx = Math.max(wl.x, Math.min(x, wl.x + wl.w));
+    const cy = Math.max(wl.y, Math.min(y, wl.y + wl.h));
+    if (Math.hypot(x - cx, y - cy) < r) return false;
+  }
+  const pRect = { x: x - PLAYER_R, y: y - PLAYER_R, w: PLAYER_R * 2, h: PLAYER_R * 2 };
+  return !spikes.some((sp) => rectsOverlap(pRect, sp));
+}
+
+// punto de llegada: ~120px hacia adelante; si cae dentro de una pared o pinchos, busca el sitio libre más cercano
+function faseLanding(player, facing, walls, spikes) {
+  const clampX = (v) => Math.max(PLAYER_R, Math.min(WORLD_W - PLAYER_R, v));
+  const clampY = (v) => Math.max(PLAYER_R, Math.min(WORLD_H - PLAYER_R, v));
+  // primero hacia adelante (para quedar del otro lado de una pared), después hacia atrás
+  const offsets = [];
+  for (let o = 0; o <= 100; o += 8) offsets.push(o);
+  for (let o = -8; o >= -80; o -= 8) offsets.push(o);
+  for (const o of offsets) {
+    const d = FASE_DIST + o;
+    const x = clampX(player.x + facing.x * d), y = clampY(player.y + facing.y * d);
+    if (Math.hypot(x - player.x, y - player.y) < 30) continue;
+    if (faseSpotFree(x, y, walls, spikes)) return { x, y };
+  }
+  return { x: clampX(player.x + facing.x * FASE_DIST), y: clampY(player.y + facing.y * FASE_DIST) };
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Brasa (fuego)
+//  · Habilidad: el juego se pausa por completo, la cámara se centra en el stickman y este queda envuelto en una
+//    gran bola de fuego que brilla tanto que el cuerpo deja de verse. Después el juego sigue con la bola encendida
+//    (quema al monstruo que se acerque); el fuego se suaviza, se disipa y el stickman vuelve a la normalidad.
+//  · Súper: pausa total, el stickman se pone naranja brillante, apunta con las manos hacia las paredes y de ellas
+//    sale fuego que las envuelve por completo. Después todo vuelve a la normalidad (las paredes siguen ardiendo).
+const BRASA_T = 1.3;          // pausa total (habilidad normal)
+const BRASA_SUPER_T = 2.7;    // pausa total (súper habilidad)
+const BRASA_BALL_R = 44;      // radio de la bola de fuego
+const BRASA_BURN_R = 68;      // a esta distancia el monstruo se quema
+const BRASA_FADE_T = 0.9;     // al final la bola se suaviza y se disipa (el stickman reaparece)
+const BRASA_WALL_T = 6;       // segundos que las paredes siguen ardiendo tras la súper
+const BRASA_WALL_FADE = 1.2;  // en el último tramo las llamas de las paredes se apagan
+let _brasaOff = null;         // canvas auxiliar (alta resolución) para teñir de naranja a cualquier personaje
+let _metalOff = null;         // canvas auxiliar (alta resolución) para teñir de gris metálico a cualquier personaje
+
+const clamp01 = (k) => Math.max(0, Math.min(1, k));
+
+// línea de tiempo de la pausa de la habilidad normal (p = 0..1)
+function brasaTimeline(p) {
+  return {
+    dim: smooth01(seg01(p, 0, 0.14)) * (1 - smooth01(seg01(p, 0.9, 1))),     // oscurecido de la escena
+    zoom: smooth01(seg01(p, 0, 0.3)) * (1 - smooth01(seg01(p, 0.84, 1))),    // acercamiento y centrado
+    grow: easeOutCubic(seg01(p, 0.05, 0.55)),                                 // tamaño de la bola
+    ball: smooth01(seg01(p, 0.04, 0.4)),                                      // opacidad de la bola
+    body: seg01(p, 0.3, 0.7),                                                 // 0 = stickman visible, 1 = oculto en el fuego
+    bloom: smooth01(seg01(p, 0.42, 0.8)),                                     // brillo cegador
+    hard: smooth01(seg01(p, 0.3, 0.75)),                                      // la llama pasa de suave a "dura" (brasa)
+  };
+}
+
+// línea de tiempo de la pausa de la súper (p = 0..1)
+function brasaSuperTimeline(p) {
+  return {
+    dim: smooth01(seg01(p, 0, 0.1)) * (1 - smooth01(seg01(p, 0.9, 1))),
+    zoom: smooth01(seg01(p, 0, 0.16)) * (1 - smooth01(seg01(p, 0.88, 1))),
+    tint: smooth01(seg01(p, 0.04, 0.3)) * (1 - smooth01(seg01(p, 0.86, 1))),   // naranja brillante
+    arm: smooth01(seg01(p, 0.24, 0.42)) * (1 - smooth01(seg01(p, 0.84, 0.94))), // manos hacia las paredes
+    palm: smooth01(seg01(p, 0.38, 0.5)) * (1 - smooth01(seg01(p, 0.82, 0.92))), // fuego en las palmas
+    jet: easeOutCubic(seg01(p, 0.46, 0.66)),                                    // el chorro avanza hacia la pared
+    jetA: seg01(p, 0.46, 0.5) * (1 - smooth01(seg01(p, 0.78, 0.9))),            // visibilidad de los chorros
+  };
+}
+
+// cada pared se enciende cuando le llega el fuego: k = 0..1
+function brasaWallK(p, rank) {
+  const st = 0.56 + 0.035 * rank;
+  return smooth01(seg01(p, st, st + 0.2));
+}
+
+// posición de la mano (punta de los dedos) según la dirección d y cuánto se extendió el brazo k
+function brasaHand(s, d, k) {
+  if (s.characterKind && s.characterKind !== "stickman") {
+    return { x: s.player.x + d.x * 13 * k, y: s.player.y - 2 + d.y * 13 * k };
+  }
+  return { x: s.player.x + d.x * 20 * k, y: s.player.y - 5 + d.y * 20 * k - 1.5 * k };
+}
+
+// Súper: elige a qué pared apunta cada mano (la más cercana de cada lado) y prepara la pausa
+function startBrasaSuper(s, walls) {
+  const px = s.player.x, py = s.player.y;
+  const info = walls.map((w) => {
+    const ox = Math.max(w.wl.x, Math.min(px, w.wl.x + w.wl.w));
+    const oy = Math.max(w.wl.y, Math.min(py, w.wl.y + w.wl.h));
+    return { wl: w.wl, cx: w.cx, cy: w.cy, ox, oy, dist: Math.hypot(ox - px, oy - py) };
+  }).sort((a, b) => a.dist - b.dist);
+  let a = info.find((w) => w.ox < px);
+  let b = info.find((w) => w.ox >= px);
+  if (a && !b) b = info.find((w) => w !== a) || a;
+  if (b && !a) a = info.find((w) => w !== b) || b;
+  const same = !!a && a === b;
+  const mkHand = (w, sign, spread) => {
+    if (!w) return { d: { x: sign * 0.98, y: -0.2 }, ax: px + sign * 85, ay: py - 12, wall: false };
+    let dx = w.ox - px, dy = w.oy - (py - 5);
+    const dl = Math.hypot(dx, dy) || 1;
+    dx /= dl; dy /= dl;
+    if (spread) {
+      const ca = Math.cos(spread), sa = Math.sin(spread);
+      [dx, dy] = [dx * ca - dy * sa, dx * sa + dy * ca];
+    }
+    return { d: { x: dx, y: dy }, ax: w.ox, ay: w.oy, wall: true };
+  };
+  const hands = [mkHand(a, -1, same ? -0.22 : 0), mkHand(b, 1, same ? 0.22 : 0)];
+  const targets = [a, b].filter((w, i, arr) => w && arr.indexOf(w) === i);
+  const ordered = [...targets, ...info.filter((w) => !targets.includes(w))];
+  s.brasaFx = { superMode: true, walls: ordered, hands };
+  s.brasaT = BRASA_SUPER_T;
+  s.moving = false;
+  s.superFx = null;
+}
+
+// Habilidad normal: pausa total y bola de fuego
+function startBrasa(s, dur) {
+  s.brasaFx = { superMode: false, dur };
+  s.brasaT = BRASA_T;
+  s.moving = false;
+}
+
+// Una lengua de fuego (capas anidadas roja → naranja → amarilla): base en (x,y), apunta hacia (dx,dy)
+function drawFlame(ctx, x, y, dx, dy, h, w, flick, alpha, layers, from, to) {
+  if (alpha <= 0.01 || h <= 0.5) return;
+  const nx = -dy, ny = dx;
+  const cols = ["210,50,10", "255,130,25", "255,226,120"];
+  for (let L = from || 0; L < (to === undefined ? layers : to); L++) {
+    const ww = w * (1 - L * 0.3), hh = h * (1 - L * 0.22);
+    const f = flick * (1 - L * 0.12);
+    const tx = x + dx * hh + nx * f, ty = y + dy * hh + ny * f;
+    const mx = x + dx * hh * 0.5 + nx * f * 0.4, my = y + dy * hh * 0.5 + ny * f * 0.4;
+    ctx.fillStyle = `rgba(${cols[L + (3 - layers)]},${Math.min(1, alpha * (0.85 + L * 0.06))})`;
+    ctx.beginPath();
+    ctx.moveTo(x - nx * ww, y - ny * ww);
+    ctx.quadraticCurveTo(mx - nx * ww * 0.9, my - ny * ww * 0.9, tx, ty);
+    ctx.quadraticCurveTo(mx + nx * ww * 0.9, my + ny * ww * 0.9, x + nx * ww, y + ny * ww);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+// Gran bola de fuego alrededor de (x,y).
+// o = { r: escala del radio, a: opacidad, hard: 0 = suave/ondulada .. 1 = dura (grietas de brasa), bloom: brillo cegador }
+function drawBrasaBall(ctx, x, y, clock, o) {
+  const a = clamp01(o.a);
+  if (a <= 0.01) return;
+  const hard = clamp01(o.hard), bloom = clamp01(o.bloom);
+  const R = BRASA_BALL_R * o.r;
+  const cy = y - 2;
+  ctx.save();
+  // resplandor grande
+  const halo = ctx.createRadialGradient(x, cy, R * 0.5, x, cy, R * 2.7);
+  halo.addColorStop(0, `rgba(255,150,40,${0.6 * a})`);
+  halo.addColorStop(1, "rgba(255,90,10,0)");
+  ctx.fillStyle = halo;
+  ctx.beginPath(); ctx.arc(x, cy, R * 2.7, 0, Math.PI * 2); ctx.fill();
+
+  // lenguas de fuego alrededor (suaves = más largas y onduladas; duras = más cortas y nítidas)
+  const n = 18;
+  for (let i = 0; i < n; i++) {
+    const ang = (i / n) * Math.PI * 2 + clock * (0.35 + 0.5 * (1 - hard));
+    const wob = Math.sin(clock * (9 - 3.5 * (1 - hard)) + i * 1.9) * 0.5 + 0.5;
+    const bx = x + Math.cos(ang) * R * 0.84, by = cy + Math.sin(ang) * R * 0.84;
+    let dx = Math.cos(ang), dy = Math.sin(ang) - 0.8;
+    const dl = Math.hypot(dx, dy) || 1;
+    dx /= dl; dy /= dl;
+    const h = R * (0.42 + 0.5 * wob) * (0.8 + 0.35 * (1 - hard));
+    const flick = Math.sin(clock * 13 + i * 2.3) * (2 + 6 * (1 - hard));
+    drawFlame(ctx, bx, by, dx, dy, h, R * 0.25, flick, a, 3);
+  }
+
+  // cuerpo de la bola: el borde ondula más cuanto más suave es
+  const wv = 0.045 + 0.08 * (1 - hard);
+  const body = ctx.createRadialGradient(x, cy - R * 0.1, 1, x, cy, R * 1.08);
+  body.addColorStop(0, `rgba(255,248,215,${a})`);
+  body.addColorStop(0.35, `rgba(255,205,75,${a})`);
+  body.addColorStop(0.72, `rgba(255,112,22,${a * (0.75 + 0.25 * hard)})`);
+  body.addColorStop(1, `rgba(215,45,8,${a * (0.3 + 0.65 * hard)})`);
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  const steps = 30;
+  for (let i = 0; i <= steps; i++) {
+    const th = (i / steps) * Math.PI * 2;
+    const rr = R * (1 + wv * Math.sin(th * 5 + clock * (7 - 3 * hard)) + 0.03 * Math.sin(th * 3 - clock * 8));
+    const px = x + Math.cos(th) * rr, py = cy + Math.sin(th) * rr;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // grietas de brasa (solo cuando la llama es "dura")
+  if (hard > 0.35) {
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    const ha = (hard - 0.35) / 0.65;
+    for (let j = 0; j < 7; j++) {
+      const a0 = (j / 7) * Math.PI * 2 + 0.4 + clock * 0.12;
+      ctx.beginPath();
+      let rr = R * 0.22, ang = a0;
+      ctx.moveTo(x + Math.cos(ang) * rr, cy + Math.sin(ang) * rr);
+      for (let k = 1; k <= 4; k++) {
+        rr += R * 0.2;
+        ang = a0 + (hsh(j * 7 + k) - 0.5) * 0.7;
+        ctx.lineTo(x + Math.cos(ang) * rr, cy + Math.sin(ang) * rr);
+      }
+      ctx.strokeStyle = `rgba(150,25,0,${0.55 * ha * a})`;
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(255,236,150,${0.4 * ha * a})`;
+      ctx.lineWidth = 0.7;
+      ctx.stroke();
+    }
+  }
+
+  // brillo cegador: núcleo blanco-amarillo que tapa por completo al stickman
+  if (bloom > 0.01) {
+    const bg = ctx.createRadialGradient(x, cy, 0, x, cy, R * 1.22);
+    bg.addColorStop(0, `rgba(255,255,242,${Math.min(1, 0.97 * bloom) * a})`);
+    bg.addColorStop(0.55, `rgba(255,238,175,${0.72 * bloom * a})`);
+    bg.addColorStop(1, "rgba(255,200,90,0)");
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.arc(x, cy, R * 1.22, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // chispas que suben
+  for (let i = 0; i < 9; i++) {
+    const ph = (clock * 1.1 + i * 0.117) % 1;
+    const ex = x + Math.sin(i * 2.4 + clock * 2) * R * (0.35 + ph * 0.6);
+    const ey = cy - R * 0.3 - ph * R * 1.7;
+    ctx.fillStyle = `rgba(255,${200 + Math.floor(ph * 40)},90,${0.9 * (1 - ph) * a})`;
+    ctx.beginPath(); ctx.arc(ex, ey, 1.7 * (1 - ph * 0.5), 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// estado de la bola de fuego durante el juego (tras la pausa): sólida al principio, luego suave y se disipa
+function brasaBallState(s) {
+  if (!(s.activeEffectAbility === "fuego" && s.activeEffectT > 0)) return null;
+  const D = s.brasaBallDur || 2.2;
+  const rem = s.activeEffectT;
+  const e = Math.max(0, D - rem);
+  const c = smooth01(Math.min(1, rem / BRASA_FADE_T)); // 1 = pleno · 0 = disipado
+  return {
+    cover: c,
+    r: 0.55 + 0.45 * c,
+    a: Math.pow(c, 0.7),
+    hard: c,
+    bloom: c * (0.45 + 0.55 * (1 - smooth01(seg01(e, 0, 0.6)))),
+  };
+}
+
+// Llamas sobre el monstruo (o un clon) mientras está quemado
+function drawBurnFlames(ctx, x, y, clock, k, sc) {
+  if (k <= 0.01) return;
+  ctx.save();
+  const g = ctx.createRadialGradient(x, y, 2, x, y, 30 * sc);
+  g.addColorStop(0, `rgba(255,150,40,${0.4 * k})`);
+  g.addColorStop(1, "rgba(232,70,15,0)");
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, 30 * sc, 0, Math.PI * 2); ctx.fill();
+  for (let i = 0; i < 6; i++) {
+    const ox = (i - 2.5) * 5.6 * sc;
+    const wob = Math.sin(clock * 11 + i * 1.7) * 0.5 + 0.5;
+    drawFlame(ctx, x + ox, y + 8 * sc, 0, -1, (12 + 13 * wob) * k * sc, 4.2 * sc, Math.sin(clock * 15 + i * 2) * 2.4, k, 3);
+  }
+  ctx.restore();
+}
+
+// Una pared envuelta en llamas por completo. k = 0..1 (intensidad). origin = punto desde donde se propaga el fuego
+// (durante la súper); sin origin la pared está encendida entera.
+function drawWallFire(ctx, wl, clock, k, origin) {
+  if (k <= 0.01) return;
+  const x0 = wl.x, y0 = wl.y, w = wl.w, h = wl.h;
+  const reach = origin ? k * (Math.max(w, h) + 40) : 1e9;
+  const pulse = 0.85 + 0.15 * Math.sin(clock * 12 + x0 * 0.05);
+  ctx.save();
+  // resplandor alrededor de la pared
+  const gcx = x0 + w / 2, gcy = y0 + h / 2, gr = Math.max(w, h) * 0.55 + 22;
+  const glow = ctx.createRadialGradient(gcx, gcy, 4, gcx, gcy, gr);
+  glow.addColorStop(0, `rgba(255,150,40,${0.34 * k})`);
+  glow.addColorStop(1, "rgba(232,70,15,0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(gcx, gcy, gr, 0, Math.PI * 2); ctx.fill();
+
+  // la pared al rojo vivo (con grietas de brasa)
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x0 - 3, y0 - 3, w + 6, h + 6); ctx.clip();
+  if (origin) {
+    const g = ctx.createRadialGradient(origin.x, origin.y, 0, origin.x, origin.y, Math.max(6, reach));
+    g.addColorStop(0, `rgba(255,160,40,${0.8 * pulse})`);
+    g.addColorStop(0.75, `rgba(255,100,15,${0.62 * pulse})`);
+    g.addColorStop(1, "rgba(220,60,10,0)");
+    ctx.fillStyle = g;
+  } else {
+    ctx.fillStyle = `rgba(255,105,20,${0.62 * k * pulse})`;
+  }
+  ctx.fillRect(x0 - 3, y0 - 3, w + 6, h + 6);
+  ctx.lineCap = "round";
+  const long = w >= h;
+  const len = long ? w : h;
+  const nCr = Math.max(1, Math.floor(len / 26));
+  for (let i = 0; i < nCr; i++) {
+    const t = (i + 0.5) / nCr;
+    const px = long ? x0 + w * t : x0 + w / 2, py = long ? y0 + h / 2 : y0 + h * t;
+    if (origin && Math.hypot(px - origin.x, py - origin.y) > reach) continue;
+    ctx.strokeStyle = `rgba(255,224,130,${0.6 * k})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    const sp = long ? h : w;
+    for (let z = 0; z <= 3; z++) {
+      const off = (z / 3 - 0.5) * sp * 1.1;
+      const jit = (hsh(i * 5 + z + x0 * 0.1) - 0.5) * 7;
+      const qx = long ? px + jit : px + off, qy = long ? py + off : py + jit;
+      if (z === 0) ctx.moveTo(qx, qy); else ctx.lineTo(qx, qy);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // masa de fuego continua sobre toda la pared (une las llamas en una sola envoltura)
+  const cols = Math.max(1, Math.round(w / 10)), rows = Math.max(1, Math.round(h / 10));
+  const cw = w / cols, ch = h / rows;
+  const cells = [];
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      const cx0 = x0 + (i + 0.5) * cw, cy0 = y0 + (j + 0.5) * ch;
+      let q = 1;
+      if (origin) q = clamp01((reach - Math.hypot(cx0 - origin.x, cy0 - origin.y)) / 22);
+      if (q <= 0.02) continue;
+      const sd = i * 7.13 + j * 3.71 + x0 * 0.013 + y0 * 0.029;
+      const w1 = Math.sin(clock * 7.3 + sd) + Math.sin(clock * 12.1 + sd * 2.3);
+      const wob = w1 * 0.25 + 0.5;
+      cells.push({ cx: cx0 + (hsh(sd) - 0.5) * cw * 0.9, cy: cy0, q, sd, wob });
+    }
+  }
+  cells.forEach((c) => {
+    const rr = (9 + 6 * c.wob) * k * c.q;
+    ctx.fillStyle = `rgba(255,105,20,${0.32 * k * c.q})`;
+    ctx.beginPath(); ctx.arc(c.cx, c.cy - 3, rr, 0, Math.PI * 2); ctx.fill();
+  });
+  // llamas por toda la superficie, en dos pasadas (primero las rojas grandes, luego las naranjas y amarillas)
+  for (let pass = 0; pass < 2; pass++) {
+    cells.forEach((c) => {
+      const jt = hsh(c.sd + 3.3);
+      const hh = (9 + 22 * c.wob * (0.6 + 0.6 * jt) + 4 * (jt > 0.7 ? 1 : 0)) * k * c.q;
+      const flick = Math.sin(clock * 15 + c.sd * 1.7) * 3.2;
+      const ww = Math.max(4.8, cw * (0.62 + 0.3 * jt));
+      const a2 = Math.min(1, c.q * (0.35 + 0.65 * k));
+      if (pass === 0) drawFlame(ctx, c.cx, c.cy + ch * 0.4, 0, -1, hh * 1.12, ww * 1.15, flick, a2, 3, 0, 1);
+      else drawFlame(ctx, c.cx, c.cy + ch * 0.4, 0, -1, hh, ww, flick * 0.9, a2, 3, 1, 3);
+    });
+  }
+  // chispas que suben de la pared
+  const nEm = Math.max(2, Math.floor(len / 22));
+  for (let i = 0; i < nEm; i++) {
+    const ph = (clock * 1.2 + i * 0.37 + x0 * 0.01) % 1;
+    const t = (i + 0.5) / nEm;
+    const ex = (long ? x0 + w * t : x0 + w / 2) + Math.sin(clock * 3 + i * 2) * 6;
+    const ey = (long ? y0 : y0 + h * t) - ph * 32;
+    if (origin && Math.hypot(ex - origin.x, ey - origin.y) > reach + 20) continue;
+    ctx.fillStyle = `rgba(255,${190 + Math.floor(ph * 50)},90,${0.85 * (1 - ph) * k})`;
+    ctx.beginPath(); ctx.arc(ex, ey, 1.7 * (1 - ph * 0.5), 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// Chorro de fuego (lanzallamas) de la mano (x1,y1) hacia la pared (x2,y2). head = 0..1 hasta dónde llegó.
+function drawFireJet(ctx, x1, y1, x2, y2, head, clock, size, alpha) {
+  if (head <= 0.01 || alpha <= 0.01) return;
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+  const N = 28;
+  ctx.save();
+  for (let i = N; i >= 0; i--) {   // de la punta hacia la mano: la base queda más brillante, encima
+    const t = (i / N) * head;
+    const wig = Math.sin(clock * 21 - t * 15 + i) * (1 + 3.6 * t) * size;
+    const px = x1 + dx * t + nx * wig, py = y1 + dy * t + ny * wig - t * 4;
+    const r = (2.6 + 9.5 * t) * size;
+    ctx.fillStyle = `rgba(${t > 0.6 ? "240,80,14" : "255,125,22"},${0.5 * alpha * (1 - 0.3 * t)})`;
+    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = `rgba(255,${t > 0.4 ? 190 : 236},${t > 0.4 ? 70 : 150},${0.75 * alpha * (1 - 0.6 * t)})`;
+    ctx.beginPath(); ctx.arc(px, py, r * 0.56, 0, Math.PI * 2); ctx.fill();
+  }
+  // frente de llamas en la punta del chorro
+  const hx = x1 + dx * head, hy = y1 + dy * head;
+  const ang = Math.atan2(uy, ux);
+  for (let i = -1; i <= 1; i++) {
+    const a2 = ang + i * 0.5;
+    drawFlame(ctx, hx, hy, Math.cos(a2), Math.sin(a2), (9 + 4 * Math.sin(clock * 16 + i)) * size, 3.6 * size, Math.sin(clock * 18 + i * 2) * 2, alpha, 3);
+  }
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Descarga / Aturdir (rayo amarillo)
+//  · Habilidad: el juego se pausa por completo, la cámara se centra en el stickman y le cae encima una
+//    lluvia de rayos amarillos mientras se carga; luego extiende la mano y lanza un gran rayo directo al
+//    monstruo que lo paraliza (después el juego sigue con normalidad).
+//  · Súper: pausa total; el stickman levanta la mano y luego la baja con fuerza. De ese golpe salen rayos
+//    que forman una pared eléctrica circular a su alrededor: bloquea al monstruo y lo paraliza si la toca,
+//    y dura lo mismo que dura la súper habilidad.
+const ELECTRICO_T = 1.25;        // pausa total (habilidad normal)
+const ELECTRICO_SUPER_T = 1.3;   // pausa total (súper habilidad)
+const ELECTRICO_WALL_T = 4;      // segundos que dura la pared eléctrica tras la súper
+const ELECTRICO_WALL_R = 58;     // radio de la pared eléctrica alrededor del stickman
+
+function electricoTimeline(p) {
+  return {
+    dim: smooth01(seg01(p, 0, 0.08)) * (1 - smooth01(seg01(p, 0.93, 1))),
+    zoom: smooth01(seg01(p, 0, 0.2)) * (1 - smooth01(seg01(p, 0.85, 1))),
+    rain: smooth01(seg01(p, 0.02, 0.16)) * (1 - smooth01(seg01(p, 0.56, 0.7))),
+    charge: smooth01(seg01(p, 0.1, 0.6)),
+    arm: smooth01(seg01(p, 0.58, 0.74)) * (1 - smooth01(seg01(p, 0.9, 0.98))),
+    travel: easeOutCubic(seg01(p, 0.68, 0.9)),
+    hit: smooth01(seg01(p, 0.86, 1)),
+  };
+}
+
+function electricoSuperTimeline(p) {
+  return {
+    dim: smooth01(seg01(p, 0, 0.08)) * (1 - smooth01(seg01(p, 0.93, 1))),
+    zoom: smooth01(seg01(p, 0, 0.2)) * (1 - smooth01(seg01(p, 0.85, 1))),
+    raise: smooth01(seg01(p, 0.06, 0.38)) * (1 - smooth01(seg01(p, 0.62, 0.76))),
+    slam: easeOutCubic(seg01(p, 0.4, 0.56)),
+    bolts: smooth01(seg01(p, 0.48, 0.68)),
+    wall: smooth01(seg01(p, 0.58, 0.88)),
+  };
+}
+
+// Habilidad normal: pausa total, luego cae la lluvia de rayos sobre el stickman
+function startElectrico(s) {
+  s.electricoFx = {
+    superMode: false,
+    bolts: Array.from({ length: 7 }, (_, i) => ({
+      ox: (hsh(i * 31 + 4) - 0.5) * 64,
+      seed: hsh(i * 17 + 9) * 100,
+      delay: hsh(i * 53 + 11),
+    })),
+  };
+  s.electricoT = ELECTRICO_T;
+  s.moving = false;
+}
+
+// Súper: levanta la mano, la baja con fuerza y de ahí nacen los rayos que forman la pared eléctrica
+function startElectricoSuper(s) {
+  s.electricoFx = {
+    superMode: true,
+    bolts: Array.from({ length: 10 }, (_, i) => ({
+      ang: (i / 10) * Math.PI * 2 + hsh(i * 13 + 2) * 0.3,
+      seed: hsh(i * 29 + 7) * 100,
+      delay: hsh(i * 41 + 3) * 0.4,
+    })),
+  };
+  s.electricoT = ELECTRICO_SUPER_T;
+  s.moving = false;
+  s.superFx = null;
+}
+
+// Mutar: el juego se pausa por completo y se enfoca en el personaje; su cuerpo se pone verde,
+// levanta la mano y lanza una nube de gas verde que viaja hasta el monstruo y lo aturde (al
+// terminar la pausa sale disparada la nube real, que conserva el golpe/aturdimiento de siempre).
+//  · Súper: pausa total; el personaje señala al monstruo y lanza montones de enredaderas que lo
+//    envuelven y lo dejan aturdido más tiempo que la habilidad normal.
+const MUTAR_T = 1.3;          // pausa total (habilidad normal)
+const MUTAR_SUPER_T = 1.25;   // pausa total (súper habilidad)
+const MUTAR_SUPER_STUN = 3.4; // segundos que las enredaderas dejan aturdido al monstruo
+const MUTAR_VINE_COUNT = 14;  // cantidad de enredaderas que salen en la súper
+
+function mutarTimeline(p) {
+  return {
+    dim: smooth01(seg01(p, 0, 0.08)) * (1 - smooth01(seg01(p, 0.93, 1))),
+    tint: smooth01(seg01(p, 0.04, 0.42)),                                     // el cuerpo se pone verde
+    arm: smooth01(seg01(p, 0.36, 0.56)) * (1 - smooth01(seg01(p, 0.9, 0.98))), // levanta la mano
+    throwT: easeOutCubic(seg01(p, 0.5, 0.86)),                                // la nube viaja hacia el monstruo
+    hit: smooth01(seg01(p, 0.8, 1)),
+  };
+}
+
+function mutarSuperTimeline(p) {
+  return {
+    dim: smooth01(seg01(p, 0, 0.08)) * (1 - smooth01(seg01(p, 0.93, 1))),
+    tint: smooth01(seg01(p, 0.02, 0.4)),                                      // el cuerpo se pone verde
+    aim: smooth01(seg01(p, 0.28, 0.5)) * (1 - smooth01(seg01(p, 0.9, 0.98))), // señala al monstruo
+    vines: seg01(p, 0.46, 0.94),                                              // las enredaderas salen y avanzan
+  };
+}
+
+// Habilidad normal: pausa total; el personaje se pone verde, levanta la mano hacia el monstruo
+// y, al terminar la pausa, sale disparada la nube de gas real (misma mecánica de siempre: aturde
+// y le quita una vida si no estaba ya aturdido).
+function startMutar(s) {
+  s.mutarFx = {};
+  s.mutarT = MUTAR_T;
+  s.moving = false;
+}
+
+// Súper: señala al monstruo y lanza montones de enredaderas que lo envuelven y lo aturden.
+function startMutarSuper(s) {
+  s.mutarSuperFx = {
+    vines: Array.from({ length: MUTAR_VINE_COUNT }, (_, i) => ({
+      ox: (hsh(i * 37 + 5) - 0.5) * 46,
+      oy: (hsh(i * 19 + 11) - 0.5) * 26,
+      seed: hsh(i * 23 + 3) * 100,
+      delay: hsh(i * 41 + 7) * 0.5,
+    })),
+  };
+  s.mutarSuperT = MUTAR_SUPER_T;
+  s.moving = false;
+  s.superFx = null;
+}
+
+// Luz: el juego se pausa por completo, el personaje se gira hacia el monstruo, se carga con
+// un resplandor blanco-dorado y lanza un ultra gigantesco rayo de luz desde las manos que lo
+// deja aturdido.
+//  · Súper: pausa total; el personaje brilla con una luz blanca intensa hasta casi fundirse en
+//    el resplandor y se teletransporta a otro punto.
+const LUZ_T = 1.35;         // pausa total (habilidad normal)
+const LUZ_SUPER_T = 1.2;    // pausa total (súper habilidad)
+const LUZ_STUN = 3.2;       // segundos que el rayo deja aturdido al monstruo
+
+function luzTimeline(p) {
+  return {
+    dim: smooth01(seg01(p, 0, 0.08)) * (1 - smooth01(seg01(p, 0.93, 1))),
+    zoom: smooth01(seg01(p, 0, 0.2)) * (1 - smooth01(seg01(p, 0.85, 1))),
+    charge: smooth01(seg01(p, 0.06, 0.48)),
+    arm: smooth01(seg01(p, 0.4, 0.58)) * (1 - smooth01(seg01(p, 0.9, 0.98))),
+    beam: easeOutCubic(seg01(p, 0.54, 0.76)),
+    hit: smooth01(seg01(p, 0.72, 1)),
+  };
+}
+
+function luzSuperTimeline(p) {
+  return {
+    dim: smooth01(seg01(p, 0, 0.08)) * (1 - smooth01(seg01(p, 0.93, 1))),
+    zoom: smooth01(seg01(p, 0, 0.2)) * (1 - smooth01(seg01(p, 0.85, 1))),
+    glow: smooth01(seg01(p, 0.08, 0.58)),
+    vanish: smooth01(seg01(p, 0.5, 0.64)),
+    reveal: 1 - smooth01(seg01(p, 0.66, 0.92)),
+  };
+}
+
+// Habilidad normal: pausa total; el personaje se gira hacia el monstruo, se carga con un
+// resplandor blanco-dorado y lanza el rayo gigante de luz que lo aturde.
+function startLuz(s) {
+  s.luzFx = { superMode: false, applied: false };
+  s.luzT = LUZ_T;
+  s.moving = false;
+}
+
+// Súper: el personaje brilla con una luz intensa hasta casi desaparecer y se teletransporta.
+function startLuzSuper(s) {
+  const wallsNow = s.levelWalls.filter((_, i) => !s.destroyedWalls.has(i));
+  const land = faseLanding(s.player, s.facing, wallsNow, s.levelSpikes);
+  s.luzFx = { superMode: true, fromX: s.player.x, fromY: s.player.y, toX: land.x, toY: land.y };
+  s.luzT = LUZ_SUPER_T;
+  s.moving = false;
+  s.superFx = null;
+}
+
+// Láser: el juego se pausa por completo y se enfoca en el personaje; este levanta las manos,
+// da un paso atrás y luego acerca/inclina la cabeza hacia adelante mientras dispara un
+// gigantesco y enorme rayo desde los ojos (rompe la primera pared que encuentra, igual que antes).
+//  · Súper: el juego se pausa; el personaje se arrodilla, voltea el rostro hacia arriba y su
+//    cuerpo se tiñe de un rojo brillante; al activarse, se desata la lluvia de rayos giratoria
+//    de siempre (ahora también con el cuerpo teñido de rojo mientras dura).
+const LASER_T = 1.6;         // pausa total (habilidad normal)
+const LASER_SUPER_T = 1.3;   // pausa total (súper: arrodillarse + mirar arriba + brillo rojo)
+const LASER_BACK_DIST = 11;  // qué tanto retrocede antes de disparar
+const LASER_LEAN_DIST = 7;   // qué tanto se inclina/acerca la cabeza al disparar
+let _laserOff = null;        // canvas auxiliar para teñir de rojo brillante a cualquier personaje
+let _mutarOff = null;        // canvas auxiliar para teñir de verde brillante a cualquier personaje
+
+function laserTimeline(p) {
+  return {
+    raise: smooth01(seg01(p, 0, 0.22)) * (1 - smooth01(seg01(p, 0.9, 1))),  // levanta las manos
+    back: easeOutCubic(seg01(p, 0.05, 0.34)),                               // da un paso atrás
+    lean: easeOutCubic(seg01(p, 0.42, 0.6)),                                // acerca/inclina la cabeza
+    charge: smooth01(seg01(p, 0.28, 0.6)),                                  // los ojos brillan antes de disparar
+    beam: easeOutCubic(seg01(p, 0.6, 0.82)),                                // el rayo gigante crece hasta el impacto
+    fade: 1 - smooth01(seg01(p, 0.93, 1)),                                  // se apaga justo antes de reanudar
+  };
+}
+
+function laserSuperTimeline(p) {
+  return {
+    kneel: easeOutCubic(seg01(p, 0, 0.3)),                                  // se arrodilla
+    lookUp: smooth01(seg01(p, 0.22, 0.48)),                                 // voltea el rostro hacia arriba
+    glow: smooth01(seg01(p, 0.4, 0.88)),                                    // el cuerpo se pone rojo brillante
+    flash: smooth01(seg01(p, 0.86, 0.97)) * (1 - smooth01(seg01(p, 0.99, 1))), // destello al activarse
+  };
+}
+
+// Habilidad normal: calcula el punto de impacto (la primera pared en el camino, igual que antes)
+// y arranca la pausa total con la secuencia manos arriba -> paso atrás -> cabeza al frente -> rayo.
+function startLaser(s) {
+  const step = 6, maxRange = 260;
+  let hx = s.player.x + s.facing.x * maxRange;
+  let hy = s.player.y + s.facing.y * maxRange;
+  let hitIdx = -1;
+  for (let dist = 0; dist <= maxRange; dist += step) {
+    const px = s.player.x + s.facing.x * dist;
+    const py = s.player.y + s.facing.y * dist;
+    const idx = s.levelWalls.findIndex(
+      (wl, i) => i > 2 && !s.destroyedWalls.has(i) && px > wl.x && px < wl.x + wl.w && py > wl.y && py < wl.y + wl.h
+    );
+    if (idx !== -1) { hx = px; hy = py; hitIdx = idx; break; }
+  }
+  s.laserFx = {
+    fromX: s.player.x, fromY: s.player.y,
+    dx: s.facing.x, dy: s.facing.y,
+    hx, hy, hitIdx,
+    applied: false,
+  };
+  s.laserT = LASER_T;
+  s.moving = false;
+}
+
+// Súper: se arrodilla, voltea el rostro hacia arriba y se tiñe de rojo brillante; al terminar la
+// pausa se desata la lluvia de rayos giratoria (misma mecánica de siempre).
+function startLaserSuper(s) {
+  s.laserSuperFx = { fromX: s.player.x, fromY: s.player.y };
+  s.laserSuperT = LASER_SUPER_T;
+  s.moving = false;
+  s.superFx = null;
+}
+
+// Metal: el juego se pausa mientras una capa de metal recubre al stickman; después corre mucho
+// más rápido y los ataques que lo toquen rebotan de vuelta hacia quien lo golpeó.
+//  · Súper: pausa total; el stickman apunta ambas manos al frente y dispara 30 rayos metálicos
+//    de cada mano. Donde cada rayo cae se forma un bulto de metal que bloquea al monstruo, pero
+//    que el propio stickman puede atravesar sin problema.
+const METAL_T = 1.1;              // pausa total (habilidad normal)
+const METAL_SPEED_MULT = 2.2;     // multiplicador de velocidad mientras el blindaje está activo
+const METAL_SUPER_T = 1.1;        // pausa total (súper habilidad)
+const METAL_RAYS_PER_HAND = 30;   // rayos disparados por cada mano en la súper
+const METAL_BLOB_LIFE = 7;        // segundos que dura cada bulto metálico
+const METAL_BLOB_R = 11;          // radio de cada bulto metálico
+
+function metalTimeline(p) {
+  return {
+    rise: smooth01(seg01(p, 0.06, 0.6)) * (1 - smooth01(seg01(p, 0.94, 1))), // la capa de metal sube por el cuerpo
+    shine: smooth01(seg01(p, 0.55, 1)),                                      // brillo final del blindaje ya puesto
+  };
+}
+
+// Habilidad normal: pausa total y capa de metal recubriendo el cuerpo
+function startMetal(s, dur) {
+  s.metalFx = { dur };
+  s.metalT = METAL_T;
+  s.moving = false;
+}
+
+function metalSuperTimeline(p) {
+  return {
+    aim: smooth01(seg01(p, 0.05, 0.46)) * (1 - smooth01(seg01(p, 0.92, 1))), // ambas manos se extienden al frente
+    fire: seg01(p, 0.42, 0.95),                                              // los rayos salen disparados
+  };
+}
+
+// Súper: ambas manos apuntan al frente y disparan 30 rayos cada una; cada impacto deja un bulto metálico
+function startMetalSuper(s) {
+  const fl = Math.hypot(s.facing.x, s.facing.y) || 1;
+  const fx0 = s.facing.x / fl, fy0 = s.facing.y / fl;
+  const baseAng = Math.atan2(fy0, fx0);
+  const handDirs = [
+    { x: Math.cos(baseAng - 0.3), y: Math.sin(baseAng - 0.3) },
+    { x: Math.cos(baseAng + 0.3), y: Math.sin(baseAng + 0.3) },
+  ];
+  const rays = [];
+  handDirs.forEach((hd, hi) => {
+    for (let i = 0; i < METAL_RAYS_PER_HAND; i++) {
+      const spread = (hsh(i * 37 + hi * 91 + 5) - 0.5) * 1.05;
+      const ang = baseAng + spread;
+      const dist = 55 + hsh(i * 53 + hi * 61 + 13) * 205;
+      const lx = Math.max(16, Math.min(WORLD_W - 16, s.player.x + Math.cos(ang) * dist));
+      const ly = Math.max(16, Math.min(WORLD_H - 16, s.player.y + Math.sin(ang) * dist));
+      rays.push({ hand: hi, x: lx, y: ly, delay: hsh(i * 29 + hi * 71 + 7) * 0.55, seed: hsh(i * 43 + hi * 19 + 3) });
+    }
+  });
+  s.metalSuperFx = { hands: handDirs, rays };
+  s.metalSuperT = METAL_SUPER_T;
+  s.moving = false;
+  s.superFx = null;
+}
+
+// Nova: el juego se pausa y se enfoca en el personaje; este se voltea (giro rápido de 180°) y de
+// ambas manos salen 70 triángulos que vuelan hasta pararse, ya formados, en un punto fijo delante
+// de él. Si el monstruo toca cualquiera de esos triángulos, ese explota y hace explotar a todos
+// los demás en cadena.
+//  · Súper: el personaje se gira hacia el monstruo y dispara un rayo enorme y gigantesco que
+//    combina energía eléctrica y energía térmica.
+const NOVA_T = 1.3;             // pausa total (habilidad normal)
+const NOVA_SUPER_T = 1.15;      // pausa total (súper)
+const NOVA_COUNT = 70;          // triángulos que salen de las manos
+const NOVA_FIELD_LIFE = 9;      // segundos que dura el campo de triángulos si no se activa
+const NOVA_FORM_R = 120;        // radio del punto de formación frente al personaje (disperso)
+const NOVA_FORM_DIST = 130;     // qué tan lejos del personaje se forma el punto
+const NOVA_CHAIN_SPEED = 320;   // velocidad (px/s) a la que se propaga la explosión en cadena
+const NOVA_BLAST_R = 46;        // radio de cada explosión individual
+const NOVA_STUN = 3.4;          // aturdimiento al monstruo si la cadena lo alcanza
+
+function novaTimeline(p) {
+  return {
+    turn: easeOutCubic(seg01(p, 0, 0.32)),   // giro rápido de 180°
+    throwP: seg01(p, 0.24, 0.94),            // los triángulos salen de las manos y viajan a formarse
+  };
+}
+
+function novaSuperTimeline(p) {
+  return {
+    turn: smooth01(seg01(p, 0, 0.22)),                                              // se gira hacia el monstruo
+    charge: smooth01(seg01(p, 0.16, 0.58)),                                          // ambas energías se cargan en la mano
+    arm: smooth01(seg01(p, 0.3, 0.52)) * (1 - smooth01(seg01(p, 0.9, 0.98))),        // extiende la mano antes de disparar
+    beam: easeOutCubic(seg01(p, 0.56, 0.86)),                                        // el rayo gigante viaja hasta el monstruo
+    impact: smooth01(seg01(p, 0.82, 0.96)) * (1 - smooth01(seg01(p, 0.99, 1))),      // destello del impacto
+  };
+}
+
+// Habilidad normal: calcula el punto de formación delante del personaje y arranca la pausa total
+// con la secuencia de giro + lanzamiento de los 70 triángulos desde las manos.
+function startNova(s) {
+  const fl = Math.hypot(s.facing.x, s.facing.y) || 1;
+  const fx0 = s.facing.x / fl, fy0 = s.facing.y / fl;
+  const formX = Math.max(24, Math.min(WORLD_W - 24, s.player.x + fx0 * NOVA_FORM_DIST));
+  const formY = Math.max(24, Math.min(WORLD_H - 24, s.player.y + fy0 * NOVA_FORM_DIST));
+  const triangles = [];
+  for (let i = 0; i < NOVA_COUNT; i++) {
+    const a = hsh(i * 17 + 3) * Math.PI * 2;
+    const r = Math.sqrt(hsh(i * 31 + 11)) * NOVA_FORM_R;
+    triangles.push({
+      x: formX + Math.cos(a) * r,
+      y: formY + Math.sin(a) * r,
+      seed: hsh(i * 53 + 7),
+      delay: hsh(i * 41 + 5) * 0.55,
+    });
+  }
+  s.novaFx = { triangles, formX, formY };
+  s.novaT = NOVA_T;
+  s.moving = false;
+}
+
+// Súper: se gira hacia el monstruo y dispara un rayo gigantesco que combina energía eléctrica y térmica.
+function startNovaSuper(s) {
+  const hx = s.player.x, hy = s.player.y - 5;
+  const dx = s.monster.x - hx, dy = s.monster.y - hy;
+  const d = Math.hypot(dx, dy) || 1;
+  s.novaSuperFx = { dx: dx / d, dy: dy / d, mx: s.monster.x, my: s.monster.y, applied: false };
+  s.novaSuperT = NOVA_SUPER_T;
+  s.moving = false;
+  s.superFx = null;
+}
+
+// Rayo en zigzag de (x1,y1) a (x2,y2): resplandor exterior + cuerpo + núcleo blanco brillante
+function drawLightningBolt(ctx, x1, y1, x2, y2, seed, alpha, color, width) {
+  if (alpha <= 0.01) return;
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len, ny = dx / len;
+  const segs = Math.max(3, Math.round(len / 16));
+  const jag = Math.min(16, len * 0.16);
+  const pts = [];
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs;
+    const off = i > 0 && i < segs ? (hsh(seed * 91.7 + i * 13.3) - 0.5) * jag : 0;
+    pts.push([x1 + dx * t + nx * off, y1 + dy * t + ny * off]);
+  }
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  [[width * 2.4, alpha * 0.3, color], [width, alpha, color], [Math.max(1, width * 0.4), alpha, "#FFF9DC"]].forEach(([w, a, c]) => {
+    ctx.strokeStyle = c;
+    ctx.lineWidth = w;
+    ctx.globalAlpha = a;
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+// Rayo gigante de luz: haz sólido blanco-dorado (sin zigzag), con destello pulsante y cabeza brillante
+function drawLightBeam(ctx, x1, y1, x2, y2, clock, alpha, color) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 2 || alpha <= 0.01) return;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, alpha);
+  ctx.lineCap = "round";
+  ctx.globalCompositeOperation = "lighter";
+  [[110, "rgba(255,255,255,0.08)"], [70, "rgba(255,255,255,0.14)"], [42, "rgba(255,246,205,0.34)"], [20, color]].forEach(([w, c]) => {
+    ctx.strokeStyle = c;
+    ctx.lineWidth = w;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  });
+  const shimmer = 0.7 + 0.3 * Math.sin(clock * 26);
+  ctx.strokeStyle = `rgba(255,255,255,${0.6 * shimmer})`;
+  ctx.lineWidth = 9;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  ctx.restore();
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = Math.min(1, alpha);
+  const hg = ctx.createRadialGradient(x2, y2, 0, x2, y2, 46);
+  hg.addColorStop(0, "rgba(255,255,255,0.95)");
+  hg.addColorStop(0.5, "rgba(255,244,190,0.5)");
+  hg.addColorStop(1, "rgba(255,244,190,0)");
+  ctx.fillStyle = hg;
+  ctx.beginPath(); ctx.arc(x2, y2, 46, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+// Roquero: el juego se pausa por completo y se enfoca en el personaje, que rasguea la guitarra
+// cada vez con más fuerza hasta que de ella sale disparada una nota musical gigante que pone a
+// bailar al monstruo (misma mecánica de baile de siempre, ahora precedida de la pausa).
+//  · Súper: el personaje rasguea la guitarra, salta, y unas notas musicales lo enganchan y lo
+//    arrastran, aumentando su velocidad durante unos segundos.
+const ROQUERO_T = 1.5;             // pausa total (habilidad normal)
+const ROQUERO_SUPER_T = 1.15;      // pausa total (súper: rasguea + salta, antes de que lo arrastren)
+const ROQUERO_SUPER_BOOST_T = 5;   // segundos que dura el impulso de velocidad tras el salto
+const ROQUERO_SPEED_MULT = 2.15;   // multiplicador de velocidad durante el impulso
+const ROQUERO_TRAIL_LIFE = 0.4;    // cuánto tarda en desvanecerse cada nota de la estela
+
+function roqueroTimeline(p) {
+  return {
+    strum: smooth01(seg01(p, 0, 0.62)),                                      // rasguea cada vez más fuerte
+    charge: smooth01(seg01(p, 0.4, 0.8)),                                     // la nota crece sobre la guitarra
+    burst: easeOutCubic(seg01(p, 0.8, 0.95)),                                 // la nota gigante sale disparada
+    fade: 1 - smooth01(seg01(p, 0.95, 1)),
+  };
+}
+
+function roqueroSuperTimeline(p) {
+  return {
+    strum: smooth01(seg01(p, 0, 0.42)),                                      // rasguea la guitarra
+    jump: easeOutCubic(seg01(p, 0.4, 0.78)),                                  // salta
+    drag: smooth01(seg01(p, 0.66, 1)),                                       // las notas lo enganchan y lo arrastran
+  };
+}
+
+// Habilidad normal: arranca la pausa total; al terminar (ver el bucle principal) sale disparada
+// la nota gigante hacia el monstruo, igual que la nota de siempre pero más grande.
+function startRoquero(s) {
+  s.roqueroFx = { fromX: s.player.x, fromY: s.player.y };
+  s.roqueroT = ROQUERO_T;
+  s.moving = false;
+}
+
+// Súper: rasguea la guitarra y salta; al terminar la pausa (ver el bucle principal) empieza el
+// impulso de velocidad de 5 segundos, arrastrado por una estela de notas musicales.
+function startRoqueroSuper(s) {
+  s.roqueroSuperFx = { fromX: s.player.x, fromY: s.player.y };
+  s.roqueroSuperT = ROQUERO_SUPER_T;
+  s.moving = false;
+  s.superFx = null;
+}
+
+// Portal azul: par de anillos vistos de canto (el eje corto apunta en la dirección del salto)
+function drawFasePortal(ctx, x, y, dx, dy, open, clock, alpha) {
+  if (open <= 0.01 || alpha <= 0.01) return;
+  const rx = FASE_PORTAL_B * open, ry = FASE_PORTAL_A * open;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, alpha);
+  ctx.translate(x, y);
+  ctx.rotate(Math.atan2(dy, dx));
+  // resplandor exterior
+  ctx.save();
+  ctx.scale(0.6, 1);
+  const R = ry * 1.9;
+  const halo = ctx.createRadialGradient(0, 0, ry * 0.5, 0, 0, R);
+  halo.addColorStop(0, "rgba(80,160,255,0.55)");
+  halo.addColorStop(1, "rgba(40,110,255,0)");
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(0, 0, R, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  // interior del portal
+  ctx.save();
+  ctx.scale(rx / ry, 1);
+  const disc = ctx.createRadialGradient(0, 0, 0, 0, 0, ry);
+  disc.addColorStop(0, "#04122E");
+  disc.addColorStop(0.65, "#0B2A6B");
+  disc.addColorStop(1, "#2F7BFF");
+  ctx.fillStyle = disc;
+  ctx.beginPath();
+  ctx.arc(0, 0, ry, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  // remolino
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "rgba(170,220,255,0.75)";
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 3; i++) {
+    const a0 = clock * 5 + i * 2.09;
+    const k = 0.42 + 0.16 * i;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, rx * k, ry * k, 0, a0, a0 + 1.4);
+    ctx.stroke();
+  }
+  // anillo exterior, anillo interior y onda que se expande
+  ctx.strokeStyle = "#2F7BFF";
+  ctx.lineWidth = 3.2;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = "#BFE6FF";
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx * 0.78, ry * 0.78, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  const ph = (clock * 1.4) % 1;
+  ctx.strokeStyle = `rgba(120,190,255,${0.5 * (1 - ph)})`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx * (1.1 + ph * 0.4), ry * (1.1 + ph * 0.4), 0, 0, Math.PI * 2);
+  ctx.stroke();
+  // chispas orbitando
+  ctx.fillStyle = "#FFFFFF";
+  for (let i = 0; i < 6; i++) {
+    const a = clock * 3 + i * 1.047;
+    ctx.globalAlpha = Math.min(1, alpha) * (0.5 + 0.5 * Math.sin(clock * 9 + i * 2));
+    ctx.beginPath();
+    ctx.arc(Math.cos(a) * rx * 1.05, Math.sin(a) * ry * 1.05, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// eje/barra que une los dos portales (crece desde la entrada hacia la salida)
+function drawFaseLink(ctx, x1, y1, x2, y2, k, clock, alpha) {
+  if (k <= 0.01 || alpha <= 0.01) return;
+  const ex = x1 + (x2 - x1) * k, ey = y1 + (y2 - y1) * k;
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.strokeStyle = `rgba(40,120,255,${0.28 * alpha})`;
+  ctx.lineWidth = 9;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(ex, ey); ctx.stroke();
+  ctx.strokeStyle = `rgba(190,230,255,${0.9 * alpha})`;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 6]);
+  ctx.lineDashOffset = -clock * 70;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(ex, ey); ctx.stroke();
+  ctx.restore();
+}
+
+// destello al entrar / salir del portal
+function drawFaseFlash(ctx, x, y, k) {
+  if (k <= 0 || k >= 1) return;
+  ctx.save();
+  const R = 12 + 34 * k;
+  const g = ctx.createRadialGradient(x, y, 1, x, y, R);
+  g.addColorStop(0, `rgba(255,255,255,${0.9 * (1 - k)})`);
+  g.addColorStop(0.5, `rgba(120,190,255,${0.6 * (1 - k)})`);
+  g.addColorStop(1, "rgba(40,110,255,0)");
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
 
 function mulberry32(seed) {
   return function () {
@@ -470,6 +1925,11 @@ function freshState(levelIdx, playerColor, characterKind) {
     lives: 3,
     invuln: 1.2,
     dashT: 0,
+    rachaChargeT: 0,
+    rachaDur: 0,
+    rachaClock: 0,
+    rachaReveal: 0,
+    rachaTrail: [],
     cd: 0,
     cd2: 0,
     activeEffectT: 0,
@@ -478,9 +1938,12 @@ function freshState(levelIdx, playerColor, characterKind) {
     gas: null,
     projectile: null,
     spark: null,
-    clonePos: null,
-    cloneVanish: null,
-    teleportFx: null,
+    luzT: 0,
+    luzFx: null,
+    faseT: 0,
+    faseFx: null,
+    faseArm: 0,
+    portalFx: null,
     teleportGrace: 0,
     stunT: 0,
     danceT: 0,
@@ -488,6 +1951,23 @@ function freshState(levelIdx, playerColor, characterKind) {
     destroyedWalls: new Set(),
     blockedGrid: lvl.grid,
     laserFx: null,
+    laserT: 0,
+    laserSuperFx: null,
+    laserSuperT: 0,
+    mutarFx: null,
+    mutarT: 0,
+    mutarSuperFx: null,
+    mutarSuperT: 0,
+    laserCharge: 0,
+    laserKneel: 0,
+    roqueroFx: null,
+    roqueroT: 0,
+    roqueroSuperFx: null,
+    roqueroSuperT: 0,
+    roqueroStrum: 0,
+    roqueroJump: 0,
+    roqueroBoostT: 0,
+    roqueroTrail: [],
     wallBreakFx: null,
     monsterFireCD: Math.max(1.5, 3 + Math.random() * 2 - levelIdx * 0.6),
     monsterFireball: null,
@@ -499,15 +1979,30 @@ function freshState(levelIdx, playerColor, characterKind) {
     monsterDefeated: false,
     defeatFx: null,
     stealFx: null,
-    sierraHitApplied: false,
+    ladronT: 0,
+    ladronFx: null,
+    brasaT: 0,
+    brasaFx: null,
+    brasaArms: null,
+    brasaBallDur: 0,
+    monsterBurnT: 0,
+    ladronCut: false,
+    cutFx: null,
+    cutGap: 0,
+    cutGlow: 0,
+    armDir: null,
+    armColor: null,
+    metalHitApplied: false,
     vientoAura: null,
     cloneMonsters: [],
     tripleCD: Math.max(5, 6.5 + Math.random() * 2 - levelIdx * 1.5),
     tripleT: 0,
     tripleFx: null,
-    tornadoT: 0,
-    tornadoProj: null,
-    tornadoBurst: null,
+    novaT: 0,
+    novaFx: null,
+    novaSuperT: 0,
+    novaSuperFx: null,
+    novaTriangles: [],
     chargeT: 0,
     superCD: 0,
     superFx: null,
@@ -521,15 +2016,26 @@ function freshState(levelIdx, playerColor, characterKind) {
     timeRushT: 0,
     clockProj: null,
     freezeT: 0,
-    decoyClones: [],
+    tiempoT: 0,
+    tiempoFx: null,
+    motoT: 0,
+    motoFx: null,
+    electricoT: 0,
+    electricoFx: null,
+    metalT: 0,
+    metalFx: null,
+    metalSuperT: 0,
+    metalSuperFx: null,
+    metalBlobs: [],
+    muerteT: 0,
+    muerteFx: null,
+    monsterCutFx: null,
     electricWall: null,
     burningWalls: [],
     vineWalls: [],
     shockwaveFx: null,
     laserStormT: 0,
     laserStormTick: 0,
-    sawProjectiles: [],
-    tornadoProjs: [],
     time: 0,
     level: levelIdx,
     levelWalls: lvl.walls,
@@ -693,27 +2199,8 @@ function useGameAudio() {
 // Every call here is guarded and silently ignored if the browser/device doesn't
 // support it (e.g. iOS Safari has no orientation lock), so it never breaks anything.
 function tryEnterLandscapeFullscreen() {
-  try {
-    const el = document.documentElement;
-    const req =
-      el.requestFullscreen ||
-      el.webkitRequestFullscreen ||
-      el.mozRequestFullScreen ||
-      el.msRequestFullscreen;
-    if (req) {
-      const result = req.call(el);
-      if (result && result.catch) result.catch(() => {});
-    }
-  } catch (e) {
-    /* fullscreen unavailable — ignore */
-  }
-  try {
-    if (screen.orientation && screen.orientation.lock) {
-      screen.orientation.lock("landscape").catch(() => {});
-    }
-  } catch (e) {
-    /* orientation lock unavailable — ignore */
-  }
+  // El juego ahora se queda en vertical: ya no forzamos pantalla completa
+  // ni bloqueo de orientación horizontal.
 }
 
 function ChaseGame({
@@ -906,15 +2393,326 @@ function ChaseGame({
       const dt = Math.min((t - last) / 1000, 0.05);
       last = t;
       const s = state.current;
-      s.time += dt;
+      s.rachaClock = (s.rachaClock || 0) + dt;
+      // Racha: mientras el stickman se transforma en energía, TODO el juego queda congelado
+      const rachaFrozen = s.status === "playing" && s.rachaChargeT > 0;
+      // Fase: mientras el stickman abre el portal y salta, TODO el juego queda congelado
+      const faseFrozen = s.status === "playing" && s.faseT > 0;
+      // Ladrón: mientras el stickman se une y lanza el rayo, TODO el juego queda congelado
+      const ladronFrozen = s.status === "playing" && s.ladronT > 0;
+      // Brasa: mientras el stickman se envuelve en fuego (o incendia las paredes), TODO el juego queda congelado
+      const brasaFrozen = s.status === "playing" && s.brasaT > 0;
+      // Tiempo: mientras el stickman se voltea, extiende el brazo y lanza la esfera, TODO el juego queda congelado
+      const tiempoFrozen = s.status === "playing" && s.tiempoT > 0;
+      // Súper Tiempo: mientras el stickman salta y sube a la motocicleta de relojes, TODO el juego queda congelado
+      const motoFrozen = s.status === "playing" && s.motoT > 0;
+      // Descarga: mientras caen los rayos (o el golpe de mano de la súper), TODO el juego queda congelado
+      const electricoFrozen = s.status === "playing" && s.electricoT > 0;
+      const luzFrozen = s.status === "playing" && s.luzT > 0;
+      // Metal: mientras la capa de metal recubre al stickman, TODO el juego queda congelado
+      const metalFrozen = s.status === "playing" && s.metalT > 0;
+      // Súper Metal: mientras apunta las manos y dispara los rayos, TODO el juego queda congelado
+      const metalSuperFrozen = s.status === "playing" && s.metalSuperT > 0;
+      // Muerte: mientras brilla morado, crece la hoz y da el corte (o antes toca la pared en la súper), TODO el juego queda congelado
+      const muerteFrozen = s.status === "playing" && s.muerteT > 0;
+      // Láser: mientras levanta las manos, retrocede, acerca la cabeza y dispara el rayo, TODO el juego queda congelado
+      const laserFrozen = s.status === "playing" && s.laserT > 0;
+      // Súper Láser: mientras se arrodilla, mira hacia arriba y su cuerpo se tiñe de rojo, TODO el juego queda congelado
+      const laserSuperFrozen = s.status === "playing" && s.laserSuperT > 0;
+      // Mutar: mientras se pone verde, levanta la mano y lanza la nube de gas, TODO el juego queda congelado
+      const mutarFrozen = s.status === "playing" && s.mutarT > 0;
+      // Súper Mutar: mientras señala al monstruo y lanza las enredaderas, TODO el juego queda congelado
+      const mutarSuperFrozen = s.status === "playing" && s.mutarSuperT > 0;
+      // Roquero: mientras rasguea la guitarra hasta que sale disparada la nota gigante, TODO el juego queda congelado
+      const roqueroFrozen = s.status === "playing" && s.roqueroT > 0;
+      // Súper Roquero: mientras rasguea la guitarra y salta, TODO el juego queda congelado (el arrastre de notas viene después, ya en movimiento)
+      const roqueroSuperFrozen = s.status === "playing" && s.roqueroSuperT > 0;
+      // Nova: mientras se voltea y lanza los 70 triángulos de las manos, TODO el juego queda congelado
+      const novaFrozen = s.status === "playing" && s.novaT > 0;
+      // Súper Nova: mientras se gira hacia el monstruo y dispara el rayo eléctrico-térmico, TODO el juego queda congelado
+      const novaSuperFrozen = s.status === "playing" && s.novaSuperT > 0;
+      if (rachaFrozen) {
+        s.rachaChargeT -= dt;
+        if (s.rachaChargeT <= 0) {
+          s.rachaChargeT = 0;
+          s.dashT = s.rachaDur; // termina la transformación: empieza la súper velocidad
+        }
+      } else if (faseFrozen) {
+        s.faseT -= dt;
+        if (s.faseT <= 0) {
+          // termina el salto: reaparece del otro lado y todo vuelve a la normalidad
+          const fz = s.faseFx;
+          s.faseT = 0;
+          s.faseFx = null;
+          if (fz) {
+            s.player.x = fz.toX;
+            s.player.y = fz.toY;
+            s.teleportGrace = 0.3;
+            s.portalFx = { ...fz, t: FASE_CLOSE_T };
+          }
+        }
+      } else if (ladronFrozen) {
+        s.ladronT -= dt;
+        const lf = s.ladronFx;
+        if (lf) {
+          const elapsed = lf.total - s.ladronT;
+          if (!lf.applied && elapsed >= lf.applyAt) {
+            // el rayo entrega la vida robada
+            lf.applied = true;
+            if (lf.superMode) s.lives = Math.max(s.lives, 5);
+            else if (!s.monsterDefeated && s.monsterLives > 0) { s.lives += 1; damageMonster(s); }
+            setHud({ lives: s.lives, cd: Math.max(0, s.cd), status: s.status, level: s.level, monsterLives: s.monsterLives, monsterDefeated: s.monsterDefeated, energy: s.energy });
+          }
+        }
+        if (s.ladronT <= 0) {
+          s.ladronT = 0;
+          s.ladronFx = null;
+          s.faseArm = 0;
+          s.armDir = null;
+          s.armColor = null;
+        }
+      } else if (brasaFrozen) {
+        s.brasaT -= dt;
+        if (s.brasaT <= 0) {
+          // termina la pausa: la bola sigue encendida (habilidad) o las paredes siguen ardiendo (súper)
+          const bf = s.brasaFx;
+          s.brasaT = 0;
+          s.brasaFx = null;
+          s.brasaArms = null;
+          if (bf) {
+            if (bf.superMode) {
+              s.burningWalls = bf.walls.map((w) => ({ x: w.cx, y: w.cy, wl: w.wl, t: BRASA_WALL_T }));
+            } else {
+              s.brasaBallDur = bf.dur;
+              s.activeEffectT = bf.dur;
+              s.activeEffectAbility = "fuego";
+            }
+          }
+        }
+      } else if (tiempoFrozen) {
+        s.tiempoT -= dt;
+        if (s.tiempoT <= 0) {
+          // termina la pausa: la esfera llegó y el monstruo queda congelado
+          s.tiempoT = 0;
+          const tf = s.tiempoFx;
+          s.tiempoFx = null;
+          s.faseArm = 0;
+          s.armDir = null;
+          s.armColor = null;
+          if (tf) s.freezeT = tf.dur;
+        }
+      } else if (motoFrozen) {
+        s.motoT -= dt;
+        if (s.motoT <= 0) {
+          // termina la pausa: arranca la motocicleta con súper velocidad e inmunidad
+          s.motoT = 0;
+          s.motoFx = null;
+          s.timeRushT = 4;
+          s.invuln = Math.max(s.invuln, 4);
+        }
+      } else if (electricoFrozen) {
+        s.electricoT -= dt;
+        if (s.electricoT <= 0) {
+          // termina la pausa: se lanza el rayo (habilidad normal) o se activa la pared eléctrica (súper)
+          const ef = s.electricoFx;
+          s.electricoT = 0;
+          s.electricoFx = null;
+          s.faseArm = 0;
+          s.armDir = null;
+          s.armColor = null;
+          if (ef) {
+            if (ef.superMode) {
+              s.electricWall = { t: ELECTRICO_WALL_T };
+            } else {
+              const dx0 = s.monster.x - s.player.x, dy0 = s.monster.y - s.player.y;
+              const d0 = Math.hypot(dx0, dy0) || 1;
+              s.projectile = { x: s.player.x, y: s.player.y, vx: (dx0 / d0) * 560, vy: (dy0 / d0) * 560, kind: "electrico", t: 0 };
+            }
+          }
+        }
+      } else if (luzFrozen) {
+        s.luzT -= dt;
+        const lf = s.luzFx;
+        if (lf && !lf.superMode && !lf.applied) {
+          const elapsed = LUZ_T - s.luzT;
+          if (elapsed >= LUZ_T * 0.72) {
+            lf.applied = true;
+            if (!s.monsterDefeated) s.stunT = Math.max(s.stunT, LUZ_STUN);
+            s.cloneMonsters.forEach((c) => { c.stunT = Math.max(c.stunT, LUZ_STUN); });
+          }
+        }
+        if (s.luzT <= 0) {
+          s.luzT = 0;
+          if (lf && lf.superMode) {
+            s.player.x = lf.toX;
+            s.player.y = lf.toY;
+          }
+          s.luzFx = null;
+          s.faseArm = 0;
+          s.armDir = null;
+          s.armColor = null;
+        }
+      } else if (metalFrozen) {
+        s.metalT -= dt;
+        if (s.metalT <= 0) {
+          // termina la pausa: la capa de metal queda puesta y empieza el blindaje (velocidad + reflejo)
+          s.metalT = 0;
+          const mf = s.metalFx;
+          s.metalFx = null;
+          if (mf) { s.activeEffectT = mf.dur; s.activeEffectAbility = "metal"; }
+        }
+      } else if (metalSuperFrozen) {
+        s.metalSuperT -= dt;
+        if (s.metalSuperT <= 0) {
+          // termina la pausa: los rayos ya cayeron y dejan los bultos metálicos en el mapa
+          s.metalSuperT = 0;
+          const msf = s.metalSuperFx;
+          s.metalSuperFx = null;
+          if (msf) {
+            s.metalBlobs.push(...msf.rays.map((r) => ({ x: r.x, y: r.y, t: METAL_BLOB_LIFE, seed: r.seed })));
+          }
+        }
+      } else if (muerteFrozen) {
+        s.muerteT -= dt;
+        const mf = s.muerteFx;
+        if (mf) {
+          const elapsed = mf.total - s.muerteT;
+          if (!mf.applied && elapsed >= mf.applyAt) {
+            mf.applied = true;
+            damageMonster(s);
+            damageMonster(s);
+            s.monsterCutFx = { x: mf.monsterX, y: mf.monsterY, t: MUERTE_CUT_FX_T };
+            setHud({ lives: s.lives, cd: Math.max(0, s.cd), status: s.status, level: s.level, monsterLives: s.monsterLives, monsterDefeated: s.monsterDefeated, energy: s.energy });
+          }
+        }
+        if (s.muerteT <= 0) {
+          s.muerteT = 0;
+          s.muerteFx = null;
+          s.faseArm = 0;
+          s.armDir = null;
+          s.armColor = null;
+        }
+      } else if (laserFrozen) {
+        s.laserT -= dt;
+        const lf = s.laserFx;
+        if (lf && !lf.applied) {
+          const elapsed = LASER_T - s.laserT;
+          if (elapsed >= LASER_T * 0.8) {
+            lf.applied = true;
+            if (lf.hitIdx !== -1) {
+              s.destroyedWalls.add(lf.hitIdx);
+              const active = s.levelWalls.filter((_, i) => !s.destroyedWalls.has(i));
+              s.blockedGrid = computeBlockedGrid(active);
+            }
+            s.wallBreakFx = { x: lf.hx, y: lf.hy, t: 0.5 };
+          }
+        }
+        if (s.laserT <= 0) {
+          s.laserT = 0;
+          s.laserFx = null;
+        }
+      } else if (laserSuperFrozen) {
+        s.laserSuperT -= dt;
+        if (s.laserSuperT <= 0) {
+          s.laserSuperT = 0;
+          s.laserSuperFx = null;
+          s.laserStormT = 4;
+          s.laserStormTick = 0;
+        }
+      } else if (mutarFrozen) {
+        s.mutarT -= dt;
+        if (s.mutarT <= 0) {
+          // termina la pausa: sale disparada la nube de gas real hacia el monstruo (misma mecánica de siempre)
+          s.mutarT = 0;
+          s.mutarFx = null;
+          const dx0 = s.monster.x - s.player.x, dy0 = s.monster.y - s.player.y;
+          const d0 = Math.hypot(dx0, dy0) || 1;
+          s.projectile = { x: s.player.x, y: s.player.y, vx: (dx0 / d0) * 320, vy: (dy0 / d0) * 320, kind: "mutar", t: 0 };
+        }
+      } else if (mutarSuperFrozen) {
+        s.mutarSuperT -= dt;
+        if (s.mutarSuperT <= 0) {
+          // termina la pausa: las enredaderas envuelven al monstruo y lo dejan aturdido
+          s.mutarSuperT = 0;
+          s.mutarSuperFx = null;
+          if (!s.monsterDefeated) {
+            if (s.stunT <= 0) damageMonster(s);
+            s.stunT = Math.max(s.stunT, MUTAR_SUPER_STUN);
+          }
+          s.cloneMonsters.forEach((c) => { c.stunT = Math.max(c.stunT, MUTAR_SUPER_STUN); });
+          s.gas = { x: s.monster.x, y: s.monster.y, t: 2.6 };
+          s.vineWalls = [...s.vineWalls, { x: s.monster.x, y: s.monster.y, t: 3 }];
+        }
+      } else if (roqueroFrozen) {
+        s.roqueroT -= dt;
+        if (s.roqueroT <= 0) {
+          // termina la pausa: sale disparada la nota gigante hacia el monstruo (lo pone a bailar, igual que siempre)
+          s.roqueroT = 0;
+          s.roqueroFx = null;
+          const dx0 = s.monster.x - s.player.x, dy0 = s.monster.y - s.player.y;
+          const d0 = Math.hypot(dx0, dy0) || 1;
+          s.projectile = { x: s.player.x, y: s.player.y, vx: (dx0 / d0) * 420, vy: (dy0 / d0) * 420, kind: "roquero", t: 0 };
+        }
+      } else if (roqueroSuperFrozen) {
+        s.roqueroSuperT -= dt;
+        if (s.roqueroSuperT <= 0) {
+          // termina la pausa: arranca el impulso — las notas lo enganchan y lo arrastran, más rápido durante 5s
+          s.roqueroSuperT = 0;
+          s.roqueroSuperFx = null;
+          s.roqueroBoostT = ROQUERO_SUPER_BOOST_T;
+        }
+      } else if (novaFrozen) {
+        s.novaT -= dt;
+        if (s.novaT <= 0) {
+          // termina la pausa: los 70 triángulos quedan armados y flotando en el punto de formación
+          s.novaT = 0;
+          const nf = s.novaFx;
+          s.novaFx = null;
+          if (nf) {
+            s.novaTriangles.push(
+              ...nf.triangles.map((tr) => ({
+                x: tr.x, y: tr.y, seed: tr.seed,
+                t: NOVA_FIELD_LIFE, exploded: false, chainT: null,
+              }))
+            );
+          }
+        }
+      } else if (novaSuperFrozen) {
+        s.novaSuperT -= dt;
+        const nsf = s.novaSuperFx;
+        if (nsf && !nsf.applied) {
+          const elapsed = NOVA_SUPER_T - s.novaSuperT;
+          if (elapsed >= NOVA_SUPER_T * 0.8) {
+            nsf.applied = true;
+            if (!s.monsterDefeated) {
+              if (s.stunT <= 0) damageMonster(s);
+              s.stunT = Math.max(s.stunT, NOVA_STUN);
+              s.monsterBurnT = Math.max(s.monsterBurnT, NOVA_STUN);
+              setHud({ lives: s.lives, cd: Math.max(0, s.cd), status: s.status, level: s.level, monsterLives: s.monsterLives, monsterDefeated: s.monsterDefeated, energy: s.energy });
+            }
+            s.cloneMonsters.forEach((c) => { c.stunT = Math.max(c.stunT, NOVA_STUN); c.burnT = Math.max(c.burnT || 0, NOVA_STUN); });
+          }
+        }
+        if (s.novaSuperT <= 0) {
+          s.novaSuperT = 0;
+          s.novaSuperFx = null;
+          s.faseArm = 0;
+          s.armDir = null;
+          s.armColor = null;
+        }
+      } else {
+        s.time += dt;
+      }
 
-      if (s.status === "playing") {
+      if (s.status === "playing" && !rachaFrozen && !faseFrozen && !ladronFrozen && !brasaFrozen && !tiempoFrozen && !motoFrozen && !electricoFrozen && !luzFrozen && !metalFrozen && !metalSuperFrozen && !muerteFrozen && !laserFrozen && !laserSuperFrozen && !mutarFrozen && !mutarSuperFrozen && !roqueroFrozen && !roqueroSuperFrozen && !novaFrozen && !novaSuperFrozen) {
         const ab = ABILITIES[ability];
         if (s.cd > 0) s.cd -= dt;
         if (s.invuln > 0) s.invuln -= dt;
         if (s.activeEffectT > 0) s.activeEffectT -= dt;
         if (s.stunT > 0) s.stunT -= dt;
         if (s.danceT > 0) s.danceT -= dt;
+        if (s.monsterBurnT > 0) s.monsterBurnT -= dt;
+        s.cloneMonsters.forEach((c) => { if (c.burnT > 0) c.burnT -= dt; });
         if (s.energy < 100) s.energy = Math.min(100, s.energy + dt * 13);
 
         // hold the ability button to charge a super version (fired later, once walls are known)
@@ -940,78 +2738,38 @@ function ChaseGame({
           s.cd = ab.cd;
           s.energy -= 50;
           if (ability === "viento") {
-            s.dashT = ab.dur;
-            s.vientoAura = { x: s.player.x, y: s.player.y, t: 0.5 };
+            s.rachaChargeT = RACHA_CHARGE_T;
+            s.rachaDur = ab.dur;
           }
-          if (ability === "sigilo") { s.activeEffectT = ab.dur; s.activeEffectAbility = "sigilo"; }
-          if (ability === "fuego") { s.activeEffectT = ab.dur; s.activeEffectAbility = "fuego"; }
-          if (ability === "sierra") { s.activeEffectT = ab.dur; s.activeEffectAbility = "sierra"; }
-          if (ability === "tiempo") {
-            const dxc = s.monster.x - s.player.x, dyc = s.monster.y - s.player.y;
-            const dnc = Math.hypot(dxc, dyc) || 1;
-            s.clockProj = { x: s.player.x, y: s.player.y, vx: (dxc / dnc) * 260, vy: (dyc / dnc) * 260, t: 0 };
-            s.freezeT = ab.dur;
-          }
-          if (ability === "clon") {
-            s.activeEffectT = ab.dur;
-            s.activeEffectAbility = "clon";
-            s.clonePos = { x: s.player.x, y: s.player.y };
-          }
+          if (ability === "muerte") startMuerte(s, false, null);
+          if (ability === "fuego") startBrasa(s, ab.dur);
+          if (ability === "metal") startMetal(s, ab.dur);
+          if (ability === "tiempo") startTiempo(s, ab.dur);
+          if (ability === "luz") startLuz(s);
           if (ability === "fase") {
-            const dist = 120;
-            let nx = s.player.x + s.facing.x * dist;
-            let ny = s.player.y + s.facing.y * dist;
-            nx = Math.max(PLAYER_R, Math.min(WORLD_W - PLAYER_R, nx));
-            ny = Math.max(PLAYER_R, Math.min(WORLD_H - PLAYER_R, ny));
-            s.teleportFx = { fromX: s.player.x, fromY: s.player.y, toX: nx, toY: ny, t: 0.4 };
-            s.player.x = nx;
-            s.player.y = ny;
-            s.teleportGrace = 0.3;
-          }
-          if (ability === "tornado") {
-            s.tornadoT = ab.dur;
-            s.tornadoProj = {
-              x: s.player.x,
-              y: s.player.y,
-              vx: -s.facing.x * 210,
-              vy: -s.facing.y * 210,
-              t: 0,
+            // el juego se pausa: el stickman extiende la mano, abre un portal hacia el otro lado, salta y reaparece
+            const wallsNow = s.levelWalls.filter((_, i) => !s.destroyedWalls.has(i));
+            const land = faseLanding(s.player, s.facing, wallsNow, s.levelSpikes);
+            const travel = Math.hypot(land.x - s.player.x, land.y - s.player.y);
+            const fl = Math.hypot(s.facing.x, s.facing.y) || 1;
+            const ux = s.facing.x / fl, uy = s.facing.y / fl;
+            const ed = Math.min(34, travel * 0.45); // el portal de entrada se abre justo delante de la mano
+            s.faseFx = {
+              dx: ux, dy: uy,
+              fromX: s.player.x, fromY: s.player.y,
+              ex: s.player.x + ux * ed, ey: s.player.y - 3 + uy * ed, // centro del portal de entrada
+              toX: land.x, toY: land.y,
+              xx: land.x, xy: land.y - 3,                              // centro del portal de salida
             };
+            s.faseT = FASE_T;
+            s.moving = false;
           }
-          if (ability === "electrico" || ability === "mutar" || ability === "roquero" || ability === "ladron") {
-            const dx0 = s.monster.x - s.player.x, dy0 = s.monster.y - s.player.y;
-            const d0 = Math.hypot(dx0, dy0) || 1;
-            const speed = ability === "electrico" ? 560 : ability === "roquero" ? 420 : ability === "ladron" ? 480 : 320;
-            s.projectile = {
-              x: s.player.x,
-              y: s.player.y,
-              vx: (dx0 / d0) * speed,
-              vy: (dy0 / d0) * speed,
-              kind: ability,
-              t: 0,
-            };
-          }
-          if (ability === "laser") {
-            const step = 6, maxRange = 260;
-            let hx = s.player.x + s.facing.x * maxRange;
-            let hy = s.player.y + s.facing.y * maxRange;
-            let hitIdx = -1;
-            for (let dist = 0; dist <= maxRange; dist += step) {
-              const px = s.player.x + s.facing.x * dist;
-              const py = s.player.y + s.facing.y * dist;
-              const idx = s.levelWalls.findIndex(
-                (wl, i) => i > 2 && !s.destroyedWalls.has(i) && px > wl.x && px < wl.x + wl.w && py > wl.y && py < wl.y + wl.h
-              );
-              if (idx !== -1) { hx = px; hy = py; hitIdx = idx; break; }
-            }
-            s.laserFx = { x1: s.player.x, y1: s.player.y, x2: hx, y2: hy, t: 3 };
-            if (hitIdx !== -1) {
-              s.destroyedWalls.add(hitIdx);
-              const active = s.levelWalls.filter((_, i) => !s.destroyedWalls.has(i));
-              s.blockedGrid = computeBlockedGrid(active);
-              s.wallBreakFx = { x: hx, y: hy, t: 0.5 };
-            }
-          }
+          if (ability === "nova") startNova(s);
+          if (ability === "ladron") startLadron(s, false);
+          if (ability === "electrico") startElectrico(s);
+          if (ability === "roquero") startRoquero(s);
+          if (ability === "mutar") startMutar(s);
+          if (ability === "laser") startLaser(s);
         }
 
         // secondary ability trigger (animal characters only — a dedicated second button)
@@ -1021,50 +2779,32 @@ function ChaseGame({
           s.cd2 = ab2.cd;
           s.energy -= 50;
           if (secondaryAbility === "viento") {
-            s.dashT = ab2.dur;
-            s.vientoAura = { x: s.player.x, y: s.player.y, t: 0.5 };
+            s.rachaChargeT = RACHA_CHARGE_T;
+            s.rachaDur = ab2.dur;
           } else if (secondaryAbility === "fuego") {
-            s.activeEffectT = ab2.dur;
-            s.activeEffectAbility = "fuego";
+            startBrasa(s, ab2.dur);
           } else if (secondaryAbility === "mutar") {
-            const dx0 = s.monster.x - s.player.x, dy0 = s.monster.y - s.player.y;
-            const d0 = Math.hypot(dx0, dy0) || 1;
-            s.projectile = { x: s.player.x, y: s.player.y, vx: (dx0 / d0) * 320, vy: (dy0 / d0) * 320, kind: "mutar", t: 0 };
+            startMutar(s);
           } else if (secondaryAbility === "tiempo") {
-            const dxc = s.monster.x - s.player.x, dyc = s.monster.y - s.player.y;
-            const dnc = Math.hypot(dxc, dyc) || 1;
-            s.clockProj = { x: s.player.x, y: s.player.y, vx: (dxc / dnc) * 260, vy: (dyc / dnc) * 260, t: 0 };
-            s.freezeT = ab2.dur;
+            startTiempo(s, ab2.dur);
           } else if (secondaryAbility === "laser") {
-            const step2 = 6, maxRange2 = 260;
-            let hx2 = s.player.x + s.facing.x * maxRange2, hy2 = s.player.y + s.facing.y * maxRange2;
-            let hitIdx2 = -1;
-            for (let dist = 0; dist <= maxRange2; dist += step2) {
-              const px = s.player.x + s.facing.x * dist, py = s.player.y + s.facing.y * dist;
-              const idx = s.levelWalls.findIndex(
-                (wl, i) => i > 2 && !s.destroyedWalls.has(i) && px > wl.x && px < wl.x + wl.w && py > wl.y && py < wl.y + wl.h
-              );
-              if (idx !== -1) { hx2 = px; hy2 = py; hitIdx2 = idx; break; }
-            }
-            s.laserFx = { x1: s.player.x, y1: s.player.y, x2: hx2, y2: hy2, t: 3 };
-            if (hitIdx2 !== -1) {
-              s.destroyedWalls.add(hitIdx2);
-              const active2 = s.levelWalls.filter((_, i) => !s.destroyedWalls.has(i));
-              s.blockedGrid = computeBlockedGrid(active2);
-              s.wallBreakFx = { x: hx2, y: hy2, t: 0.5 };
-            }
+            startLaser(s);
           }
         }
         if (s.cd2 > 0) s.cd2 -= dt;
-        if (s.dashT > 0) s.dashT -= dt;
+        if (s.dashT > 0) {
+          s.dashT -= dt;
+          if (s.dashT <= 0) { s.dashT = 0; s.rachaReveal = RACHA_REVEAL_T; }
+        }
+        if (s.rachaReveal > 0) s.rachaReveal -= dt;
         if (s.vientoAura) {
           s.vientoAura.t -= dt;
           if (s.vientoAura.t <= 0) s.vientoAura = null;
         }
-        if (s.tornadoT > 0) s.tornadoT -= dt;
         if (s.freezeT > 0) s.freezeT -= dt;
         if (s.timeRushT > 0) s.timeRushT -= dt;
         if (s.phaseThroughT > 0) s.phaseThroughT -= dt;
+        if (s.roqueroBoostT > 0) s.roqueroBoostT -= dt;
         if (s.clockProj) {
           const cp = s.clockProj;
           cp.t += dt;
@@ -1084,52 +2824,42 @@ function ChaseGame({
           s.spark.t -= dt;
           if (s.spark.t <= 0) s.spark = null;
         }
-        if (s.cloneVanish) {
-          s.cloneVanish.t -= dt;
-          if (s.cloneVanish.t <= 0) s.cloneVanish = null;
-        }
         if (s.notesFx) {
           s.notesFx.t -= dt;
           if (s.notesFx.t <= 0) s.notesFx = null;
-        }
-        if (s.laserFx) {
-          s.laserFx.t -= dt;
-          if (s.laserFx.t <= 0) s.laserFx = null;
         }
         if (s.wallBreakFx) {
           s.wallBreakFx.t -= dt;
           if (s.wallBreakFx.t <= 0) s.wallBreakFx = null;
         }
-        if (s.teleportFx) {
-          s.teleportFx.t -= dt;
-          if (s.teleportFx.t <= 0) s.teleportFx = null;
+        if (s.portalFx) {
+          s.portalFx.t -= dt;
+          if (s.portalFx.t <= 0) s.portalFx = null;
         }
-        if (s.activeEffectAbility !== "clon" || s.activeEffectT <= 0) s.clonePos = null;
         const activeWalls = s.levelWalls.filter((_, i) => !s.destroyedWalls.has(i));
-        const shieldActive = s.activeEffectAbility === "sierra" && s.activeEffectT > 0;
+        const metalActive = s.activeEffectAbility === "metal" && s.activeEffectT > 0;
 
         // super ability: fires once the button has been held long enough, costs the whole energy bar
         const fireSuper = (targetId) => {
           const targetAb = ABILITIES[targetId];
           s.superFx = { x: s.player.x, y: s.player.y, t: 0.6, color: targetAb.accent };
-          const nearWalls = (radius) =>
-            activeWalls
+          const nearWalls = (radius, byDist) => {
+            const list = activeWalls
               .map((wl, i) => ({ wl, i, cx: wl.x + wl.w / 2, cy: wl.y + wl.h / 2 }))
-              .filter((w) => w.i > 2 && Math.hypot(w.cx - s.player.x, w.cy - s.player.y) < radius)
-              .slice(0, 6);
+              .filter((w) => w.i > 2 && Math.hypot(w.cx - s.player.x, w.cy - s.player.y) < radius);
+            if (byDist) list.sort((a, b) => Math.hypot(a.cx - s.player.x, a.cy - s.player.y) - Math.hypot(b.cx - s.player.x, b.cy - s.player.y));
+            return list.slice(0, 6);
+          };
 
           if (targetId === "viento") {
             s.slowAura = { x: s.player.x, y: s.player.y, r: 100, t: 5 };
-          } else if (targetId === "sigilo") {
-            s.phaseThroughT = 3;
+          } else if (targetId === "muerte") {
+            const near = nearWalls(220, true)[0] || null;
+            startMuerte(s, true, near);
           } else if (targetId === "tiempo") {
-            s.timeRushT = 4;
-            s.invuln = Math.max(s.invuln, 4);
-          } else if (targetId === "clon") {
-            s.decoyClones = Array.from({ length: 5 }, (_, i) => {
-              const ang = (i / 5) * Math.PI * 2;
-              return { x: s.player.x, y: s.player.y, vx: Math.cos(ang) * 55, vy: Math.sin(ang) * 55, t: 6 };
-            });
+            startMotoSuper(s);
+          } else if (targetId === "luz") {
+            startLuzSuper(s);
           } else if (targetId === "fase") {
             if (!s.monsterDefeated) {
               s.monster.x = s.monsterStartPos.x;
@@ -1139,62 +2869,22 @@ function ChaseGame({
               s.repathT = 0;
             }
           } else if (targetId === "electrico") {
-            const ang = Math.atan2(s.facing.y, s.facing.x);
-            s.electricWall = {
-              x: s.player.x + s.facing.x * 55,
-              y: s.player.y + s.facing.y * 55,
-              angle: ang + Math.PI / 2,
-              len: 90,
-              t: 3,
-              hitCd: {},
-            };
+            startElectricoSuper(s);
           } else if (targetId === "fuego") {
-            s.burningWalls = nearWalls(220).map((w) => ({ x: w.cx, y: w.cy, t: 6 }));
+            // súper Brasa: pausa total; las manos apuntan a las paredes cercanas y las envuelven en fuego
+            startBrasaSuper(s, nearWalls(220, true));
           } else if (targetId === "mutar") {
-            s.vineWalls = nearWalls(220).map((w) => ({ x: w.cx, y: w.cy, t: 6 }));
+            startMutarSuper(s);
           } else if (targetId === "roquero") {
-            const pushR = 150, pushBy = 80;
-            if (!s.monsterDefeated) {
-              const d = Math.hypot(s.monster.x - s.player.x, s.monster.y - s.player.y);
-              if (d < pushR && d > 1) {
-                s.monster.x = Math.max(MONSTER_R, Math.min(WORLD_W - MONSTER_R, s.monster.x + ((s.monster.x - s.player.x) / d) * pushBy));
-                s.monster.y = Math.max(MONSTER_R, Math.min(WORLD_H - MONSTER_R, s.monster.y + ((s.monster.y - s.player.y) / d) * pushBy));
-              }
-            }
-            s.cloneMonsters.forEach((c) => {
-              const d = Math.hypot(c.x - s.player.x, c.y - s.player.y);
-              if (d < pushR && d > 1) {
-                c.x = Math.max(MONSTER_R, Math.min(WORLD_W - MONSTER_R, c.x + ((c.x - s.player.x) / d) * pushBy));
-                c.y = Math.max(MONSTER_R, Math.min(WORLD_H - MONSTER_R, c.y + ((c.y - s.player.y) / d) * pushBy));
-              }
-            });
-            s.shockwaveFx = { x: s.player.x, y: s.player.y, t: 0.5 };
+            startRoqueroSuper(s);
           } else if (targetId === "laser") {
-            s.laserStormT = 4;
-            s.laserStormTick = 0;
-          } else if (targetId === "sierra") {
-            const dx0 = s.monster.x - s.player.x, dy0 = s.monster.y - s.player.y;
-            const d0 = Math.hypot(dx0, dy0) || 1;
-            const baseAng = Math.atan2(dy0, dx0);
-            s.sawProjectiles = [-0.35, 0.35].map((off) => ({
-              x: s.player.x,
-              y: s.player.y,
-              vx: Math.cos(baseAng + off) * 340,
-              vy: Math.sin(baseAng + off) * 340,
-              t: 0,
-            }));
-          } else if (targetId === "tornado") {
-            s.tornadoT = targetAb.dur;
-            const backAng = Math.atan2(-s.facing.y, -s.facing.x);
-            s.tornadoProjs = [backAng, backAng + 2.3, backAng - 2.3].map((ang) => ({
-              x: s.player.x,
-              y: s.player.y,
-              vx: Math.cos(ang) * 210,
-              vy: Math.sin(ang) * 210,
-              t: 0,
-            }));
+            startLaserSuper(s);
+          } else if (targetId === "metal") {
+            startMetalSuper(s);
+          } else if (targetId === "nova") {
+            startNovaSuper(s);
           } else if (targetId === "ladron") {
-            s.lives = 5;
+            startLadron(s, true);
           }
         };
 
@@ -1263,20 +2953,32 @@ function ChaseGame({
           if (s.electricWall.t <= 0) {
             s.electricWall = null;
           } else {
-            const ew = s.electricWall;
-            const hx = Math.cos(ew.angle) * ew.len, hy = Math.sin(ew.angle) * ew.len;
-            const checkHit = (tx, ty) => {
-              const dx = tx - ew.x, dy = ty - ew.y;
-              const proj = Math.max(-1, Math.min(1, (dx * hx + dy * hy) / (ew.len * ew.len)));
-              const cx = ew.x + hx * proj, cy = ew.y + hy * proj;
-              return Math.hypot(tx - cx, ty - cy) < 14;
+            // pared eléctrica circular alrededor del stickman: bloquea al monstruo (lo empuja hacia afuera)
+            // y lo paraliza si la toca
+            const R = ELECTRICO_WALL_R;
+            const pushOut = (tx, ty) => {
+              const dx = tx - s.player.x, dy = ty - s.player.y;
+              const d = Math.hypot(dx, dy) || 1;
+              if (d >= R) return null;
+              return {
+                x: Math.max(MONSTER_R, Math.min(WORLD_W - MONSTER_R, s.player.x + (dx / d) * R)),
+                y: Math.max(MONSTER_R, Math.min(WORLD_H - MONSTER_R, s.player.y + (dy / d) * R)),
+              };
             };
-            if (!s.monsterDefeated && checkHit(s.monster.x, s.monster.y)) {
-              if (s.stunT <= 0) damageMonster(s);
-              s.stunT = Math.max(s.stunT, 2.4);
+            if (!s.monsterDefeated) {
+              const hit = pushOut(s.monster.x, s.monster.y);
+              if (hit) {
+                s.monster.x = hit.x; s.monster.y = hit.y;
+                if (s.stunT <= 0) damageMonster(s);
+                s.stunT = Math.max(s.stunT, 2.4);
+              }
             }
             s.cloneMonsters.forEach((c) => {
-              if (checkHit(c.x, c.y)) c.stunT = Math.max(c.stunT, 2.4);
+              const hit = pushOut(c.x, c.y);
+              if (hit) {
+                c.x = hit.x; c.y = hit.y;
+                c.stunT = Math.max(c.stunT, 2.4);
+              }
             });
           }
         }
@@ -1284,12 +2986,17 @@ function ChaseGame({
           s.burningWalls = s.burningWalls.filter((bw) => {
             bw.t -= dt;
             if (bw.t <= 0) return false;
-            if (!s.monsterDefeated && Math.hypot(bw.x - s.monster.x, bw.y - s.monster.y) < 34) {
+            // la pared arde entera: quema al monstruo que toque cualquier parte de ella
+            const wallDist = (mx, my) => bw.wl
+              ? Math.hypot(mx - Math.max(bw.wl.x, Math.min(mx, bw.wl.x + bw.wl.w)), my - Math.max(bw.wl.y, Math.min(my, bw.wl.y + bw.wl.h)))
+              : Math.hypot(bw.x - mx, bw.y - my) - 20;
+            if (!s.monsterDefeated && wallDist(s.monster.x, s.monster.y) < MONSTER_R + 10) {
               if (s.stunT <= 0) damageMonster(s);
               s.stunT = Math.max(s.stunT, 2.2);
+              s.monsterBurnT = Math.max(s.monsterBurnT, 1.0);
             }
             s.cloneMonsters.forEach((c) => {
-              if (Math.hypot(bw.x - c.x, bw.y - c.y) < 34) c.stunT = Math.max(c.stunT, 2.2);
+              if (wallDist(c.x, c.y) < MONSTER_R * 0.86 + 10) { c.stunT = Math.max(c.stunT, 2.2); c.burnT = 1.0; }
             });
             return true;
           });
@@ -1308,102 +3015,70 @@ function ChaseGame({
             return true;
           });
         }
-        if (s.decoyClones.length > 0) {
-          s.decoyClones = s.decoyClones.filter((dc) => {
-            dc.t -= dt;
-            dc.x += dc.vx * dt;
-            dc.y += dc.vy * dt;
-            dc.vx += (Math.random() - 0.5) * 40 * dt;
-            dc.vy += (Math.random() - 0.5) * 40 * dt;
-            dc.x = Math.max(PLAYER_R, Math.min(WORLD_W - PLAYER_R, dc.x));
-            dc.y = Math.max(PLAYER_R, Math.min(WORLD_H - PLAYER_R, dc.y));
-            if (dc.t <= 0) return false;
-            const dM = !s.monsterDefeated && Math.hypot(dc.x - s.monster.x, dc.y - s.monster.y) < PLAYER_R + MONSTER_R - 4;
-            const dC = s.cloneMonsters.some((c) => Math.hypot(dc.x - c.x, dc.y - c.y) < PLAYER_R + MONSTER_R * 0.86 - 4);
-            if (dM || dC) {
-              s.cloneVanish = { x: dc.x, y: dc.y, t: 0.5 };
-              return false;
-            }
-            return true;
+        if (s.metalBlobs.length > 0) {
+          s.metalBlobs = s.metalBlobs.filter((mb) => {
+            mb.t -= dt;
+            return mb.t > 0;
           });
         }
-        if (s.sawProjectiles.length > 0) {
-          s.sawProjectiles = s.sawProjectiles.filter((sp) => {
-            sp.t += dt;
-            sp.x += sp.vx * dt;
-            sp.y += sp.vy * dt;
-            const hitWallSp = activeWalls.some(
-              (wl) => sp.x > wl.x && sp.x < wl.x + wl.w && sp.y > wl.y && sp.y < wl.y + wl.h
-            );
-            if (!s.monsterDefeated && Math.hypot(sp.x - s.monster.x, sp.y - s.monster.y) < MONSTER_R + 8) {
-              if (s.stunT <= 0) damageMonster(s);
-              s.stunT = Math.max(s.stunT, 2.6);
-              return false;
+        // Nova: campo de 70 triángulos; si el monstruo (o un clon) toca uno sin activar, ese
+        // triángulo se enciende y hace estallar a todos los demás en una cadena que se propaga
+        // según la distancia a cada uno.
+        if (s.novaTriangles.length > 0) {
+          let ignition = null;
+          if (!s.monsterDefeated) {
+            for (const tr of s.novaTriangles) {
+              if (tr.chainT == null && Math.hypot(tr.x - s.monster.x, tr.y - s.monster.y) < MONSTER_R + 10) {
+                ignition = tr;
+                break;
+              }
             }
-            const hitClone = s.cloneMonsters.find((c) => Math.hypot(sp.x - c.x, sp.y - c.y) < MONSTER_R * 0.86 + 8);
-            if (hitClone) {
-              hitClone.stunT = Math.max(hitClone.stunT, 2.6);
-              return false;
+          }
+          if (!ignition) {
+            outer: for (const c of s.cloneMonsters) {
+              for (const tr of s.novaTriangles) {
+                if (tr.chainT == null && Math.hypot(tr.x - c.x, tr.y - c.y) < MONSTER_R * 0.86 + 10) {
+                  ignition = tr;
+                  break outer;
+                }
+              }
             }
-            return !(hitWallSp || sp.t > 2.2 || sp.x < 0 || sp.x > WORLD_W || sp.y < 0 || sp.y > WORLD_H);
-          });
-        }
-        if (s.tornadoProjs.length > 0) {
-          s.tornadoProjs = s.tornadoProjs.filter((tp2) => {
-            tp2.t += dt;
-            tp2.x += tp2.vx * dt;
-            tp2.y += tp2.vy * dt;
-            const hitWallT2 = activeWalls.some(
-              (wl) => tp2.x > wl.x && tp2.x < wl.x + wl.w && tp2.y > wl.y && tp2.y < wl.y + wl.h
-            );
-            let swept2 = false;
-            if (!s.monsterDefeated && Math.hypot(tp2.x - s.monster.x, tp2.y - s.monster.y) < MONSTER_R + 14) {
-              const dn2 = Math.hypot(tp2.vx, tp2.vy) || 1;
-              s.monster.x = Math.max(MONSTER_R, Math.min(WORLD_W - MONSTER_R, s.monster.x + (tp2.vx / dn2) * 150));
-              s.monster.y = Math.max(MONSTER_R, Math.min(WORLD_H - MONSTER_R, s.monster.y + (tp2.vy / dn2) * 150));
-              if (s.stunT <= 0) damageMonster(s);
-              s.stunT = Math.max(s.stunT, 2.5);
-              swept2 = true;
-            }
-            s.cloneMonsters.forEach((c) => {
-              if (Math.hypot(tp2.x - c.x, tp2.y - c.y) < MONSTER_R * 0.86 + 12) c.stunT = Math.max(c.stunT, 2.5);
+          }
+          if (ignition) {
+            s.novaTriangles.forEach((tr) => {
+              if (tr.chainT == null) {
+                tr.chainT = Math.hypot(tr.x - ignition.x, tr.y - ignition.y) / NOVA_CHAIN_SPEED;
+              }
             });
-            return !(swept2 || hitWallT2 || tp2.t > 2 || tp2.x < 0 || tp2.x > WORLD_W || tp2.y < 0 || tp2.y > WORLD_H);
+          }
+          s.novaTriangles = s.novaTriangles.filter((tr) => {
+            if (tr.chainT != null) {
+              if (!tr.exploded) {
+                tr.chainT -= dt;
+                if (tr.chainT <= 0) {
+                  tr.exploded = true;
+                  tr.t = 0.45;
+                  if (!s.monsterDefeated && Math.hypot(tr.x - s.monster.x, tr.y - s.monster.y) < NOVA_BLAST_R + MONSTER_R) {
+                    if (s.stunT <= 0) damageMonster(s);
+                    s.stunT = Math.max(s.stunT, NOVA_STUN);
+                    s.monsterBurnT = Math.max(s.monsterBurnT, NOVA_STUN);
+                  }
+                  s.cloneMonsters.forEach((c) => {
+                    if (Math.hypot(tr.x - c.x, tr.y - c.y) < NOVA_BLAST_R + MONSTER_R * 0.86) c.stunT = Math.max(c.stunT, NOVA_STUN);
+                  });
+                }
+                return true;
+              }
+              tr.t -= dt;
+              return tr.t > 0;
+            }
+            tr.t -= dt;
+            return tr.t > 0;
           });
         }
 
-        // tornado thrown in the opposite direction — sweeps away anything it touches
-        if (s.tornadoProj) {
-          const tp = s.tornadoProj;
-          tp.t += dt;
-          tp.x += tp.vx * dt;
-          tp.y += tp.vy * dt;
-          const tpHitWall = activeWalls.some(
-            (wl) => tp.x > wl.x && tp.x < wl.x + wl.w && tp.y > wl.y && tp.y < wl.y + wl.h
-          );
-          const dTpM = s.monsterDefeated ? Infinity : Math.hypot(tp.x - s.monster.x, tp.y - s.monster.y);
-          let swept = false;
-          if (dTpM < MONSTER_R + 14) {
-            const dn = Math.hypot(tp.vx, tp.vy) || 1;
-            s.monster.x = Math.max(MONSTER_R, Math.min(WORLD_W - MONSTER_R, s.monster.x + (tp.vx / dn) * 150));
-            s.monster.y = Math.max(MONSTER_R, Math.min(WORLD_H - MONSTER_R, s.monster.y + (tp.vy / dn) * 150));
-            if (s.stunT <= 0) damageMonster(s);
-            s.stunT = Math.max(s.stunT, 2.5);
-            swept = true;
-          }
-          s.cloneMonsters = s.cloneMonsters.filter((c) => Math.hypot(tp.x - c.x, tp.y - c.y) >= MONSTER_R + 12);
-          if (swept || tpHitWall || tp.t > 2 || tp.x < 0 || tp.x > WORLD_W || tp.y < 0 || tp.y > WORLD_H) {
-            s.tornadoBurst = { x: tp.x, y: tp.y, t: 0.5 };
-            s.tornadoProj = null;
-          }
-        }
-        if (s.tornadoBurst) {
-          s.tornadoBurst.t -= dt;
-          if (s.tornadoBurst.t <= 0) s.tornadoBurst = null;
-        }
-
-        // sierra shield clears nearby animals
-        if (shieldActive && s.levelAnimals.length > 0) {
+        // el blindaje de metal aparta a los animales cercanos
+        if (metalActive && s.levelAnimals.length > 0) {
           s.levelAnimals = s.levelAnimals.filter(
             (a) => Math.hypot(a.x - s.player.x, a.y - s.player.y) > 22
           );
@@ -1422,12 +3097,6 @@ function ChaseGame({
               if (s.danceT <= 0) damageMonster(s);
               s.danceT = Math.max(s.danceT, ABILITIES.roquero.dur);
               s.notesFx = { x: p.x, y: p.y, t: 0.6 };
-            } else if (p.kind === "ladron") {
-              if (s.monsterLives > 0) {
-                s.lives += 1;
-                s.stealFx = { x: p.x, y: p.y, t: 0.6 };
-                damageMonster(s);
-              }
             } else {
               if (s.stunT <= 0) damageMonster(s);
               const paralyzeFor = p.kind === "electrico" ? 2.6 : 2.9;
@@ -1447,9 +3116,17 @@ function ChaseGame({
           s.stealFx.t -= dt;
           if (s.stealFx.t <= 0) s.stealFx = null;
         }
+        if (s.cutFx) {
+          s.cutFx.t -= dt;
+          if (s.cutFx.t <= 0) s.cutFx = null;
+        }
         if (s.defeatFx) {
           s.defeatFx.t -= dt;
           if (s.defeatFx.t <= 0) s.defeatFx = null;
+        }
+        if (s.monsterCutFx) {
+          s.monsterCutFx.t -= dt;
+          if (s.monsterCutFx.t <= 0) s.monsterCutFx = null;
         }
 
         // monster's black fireball in flight
@@ -1463,16 +3140,32 @@ function ChaseGame({
           );
           const dFb = Math.hypot(fb.x - s.player.x, fb.y - s.player.y);
           if (dFb < PLAYER_R + 8) {
-            if (s.invuln <= 0 && !shieldActive) {
-              s.lives -= 1;
-              s.invuln = 1.4;
-              const dxk = s.player.x - fb.x, dyk = s.player.y - fb.y;
-              const dk = Math.hypot(dxk, dyk) || 1;
-              s.player.x = Math.max(PLAYER_R, Math.min(WORLD_W - PLAYER_R, s.player.x + (dxk / dk) * 22));
-              s.player.y = Math.max(PLAYER_R, Math.min(WORLD_H - PLAYER_R, s.player.y + (dyk / dk) * 22));
-              if (s.lives <= 0) s.status = "lost";
+            if (metalActive) {
+              // el blindaje de metal refleja el ataque de vuelta hacia el monstruo
+              if (!fb.reflected) {
+                fb.reflected = true;
+                fb.vx = -fb.vx;
+                fb.vy = -fb.vy;
+                fb.t = 0;
+              }
+            } else {
+              if (s.invuln <= 0) {
+                s.lives -= 1;
+                s.invuln = 1.4;
+                const dxk = s.player.x - fb.x, dyk = s.player.y - fb.y;
+                const dk = Math.hypot(dxk, dyk) || 1;
+                s.player.x = Math.max(PLAYER_R, Math.min(WORLD_W - PLAYER_R, s.player.x + (dxk / dk) * 22));
+                s.player.y = Math.max(PLAYER_R, Math.min(WORLD_H - PLAYER_R, s.player.y + (dyk / dk) * 22));
+                if (s.lives <= 0) s.status = "lost";
+              }
+              s.fireballBurst = { x: fb.x, y: fb.y, t: 0.5 };
+              s.monsterFireball = null;
             }
-            s.fireballBurst = { x: fb.x, y: fb.y, t: 0.5 };
+          } else if (fb.reflected && !s.monsterDefeated && Math.hypot(fb.x - s.monster.x, fb.y - s.monster.y) < MONSTER_R + 8) {
+            // el rayo reflejado alcanza al monstruo
+            if (s.stunT <= 0) damageMonster(s);
+            s.stunT = Math.max(s.stunT, 2.2);
+            s.fireballBurst = { x: fb.x, y: fb.y, t: 0.4 };
             s.monsterFireball = null;
           } else if (fbHitWall || fb.t > 2.6 || fb.x < 0 || fb.x > WORLD_W || fb.y < 0 || fb.y > WORLD_H) {
             s.fireballBurst = { x: fb.x, y: fb.y, t: 0.4 };
@@ -1528,14 +3221,7 @@ function ChaseGame({
             );
             const dRock = Math.hypot(r.x - s.player.x, r.y - s.player.y);
             if (dRock < PLAYER_R + 7) {
-              if (s.tornadoT > 0) {
-                // spinning inside the tornado bats the projectile back the way it came
-                r.vx *= -1.15;
-                r.vy *= -1.15;
-                r.t = 0;
-                return true;
-              }
-              if (s.invuln <= 0 && !shieldActive) {
+              if (s.invuln <= 0 && !metalActive) {
                 s.lives -= 1;
                 s.invuln = 1.4;
                 const dxk = s.player.x - r.x, dyk = s.player.y - r.y;
@@ -1564,7 +3250,7 @@ function ChaseGame({
           if (s.tripleT <= 0 && !s.cloneMonsters.some((c) => c.permanent)) {
             s.cloneMonsters = [];
           } else {
-            const seesPlayerNow = !(s.activeEffectAbility === "sigilo" && s.activeEffectT > 0);
+            const seesPlayerNow = true;
             s.cloneMonsters.forEach((c) => {
               if (c.stunT > 0 || s.freezeT > 0) {
                 if (c.stunT > 0) c.stunT -= dt;
@@ -1622,6 +3308,7 @@ function ChaseGame({
               c.x = Math.max(MONSTER_R, Math.min(WORLD_W - MONSTER_R, c.x));
               c.y = Math.max(MONSTER_R, Math.min(WORLD_H - MONSTER_R, c.y));
               activeWalls.forEach((wl) => circleRectPush(c, MONSTER_R * 0.86, wl));
+              s.metalBlobs.forEach((mb) => circleRectPush(c, MONSTER_R * 0.86, { x: mb.x - METAL_BLOB_R, y: mb.y - METAL_BLOB_R, w: METAL_BLOB_R * 2, h: METAL_BLOB_R * 2 }));
 
               if (c.fireball) {
                 const fb = c.fireball;
@@ -1633,7 +3320,7 @@ function ChaseGame({
                 );
                 const dFbC = Math.hypot(fb.x - s.player.x, fb.y - s.player.y);
                 if (dFbC < PLAYER_R + 8) {
-                  if (s.invuln <= 0 && !shieldActive) {
+                  if (s.invuln <= 0 && !metalActive) {
                     s.lives -= 1;
                     s.invuln = 1.4;
                     const dxk = s.player.x - fb.x, dyk = s.player.y - fb.y;
@@ -1651,23 +3338,23 @@ function ChaseGame({
           }
         }
 
-        // sierra shield can stun whatever it touches
-        if (shieldActive && !s.sierraHitApplied) {
+        // el blindaje de metal aturde a lo que lo toque (refleja el ataque)
+        if (metalActive && !s.metalHitApplied) {
           const dPS = Math.hypot(s.monster.x - s.player.x, s.monster.y - s.player.y);
           if (!s.monsterDefeated && dPS < 40) {
             if (s.stunT <= 0) damageMonster(s);
             s.stunT = Math.max(s.stunT, 3);
-            s.sierraHitApplied = true;
+            s.metalHitApplied = true;
           }
           s.cloneMonsters.forEach((c) => {
             const dCS = Math.hypot(c.x - s.player.x, c.y - s.player.y);
             if (dCS < 40) {
               c.stunT = Math.max(c.stunT, 3);
-              s.sierraHitApplied = true;
+              s.metalHitApplied = true;
             }
           });
         }
-        if (!shieldActive) s.sierraHitApplied = false;
+        if (!metalActive) s.metalHitApplied = false;
 
         // movement — keyboard + touch joystick combined
         let mx = joy.current.x, my = joy.current.y;
@@ -1681,7 +3368,7 @@ function ChaseGame({
         if (isMoving) {
           const len = Math.hypot(mx, my) || 1;
           s.facing = { x: mx / len, y: my / len };
-          const speed = 126 * (s.dashT > 0 ? 2.1 : 1) * (s.tornadoT > 0 ? 2.8 : 1) * (s.timeRushT > 0 ? 2.4 : 1) * (slowed ? PUDDLE_SLOW : 1);
+          const speed = 126 * (s.dashT > 0 ? 2.1 : 1) * (s.timeRushT > 0 ? 2.4 : 1) * (metalActive ? METAL_SPEED_MULT : 1) * (s.roqueroBoostT > 0 ? ROQUERO_SPEED_MULT : 1) * (slowed ? PUDDLE_SLOW : 1);
           s.player.x += (mx / len) * speed * dt;
           s.player.y += (my / len) * speed * dt;
         }
@@ -1695,8 +3382,22 @@ function ChaseGame({
           activeWalls.forEach((wl) => circleRectPush(s.player, PLAYER_R, wl));
         }
 
+        // estela de energía de Racha
+        if (s.rachaTrail) {
+          s.rachaTrail.forEach((pt) => (pt.age += dt));
+          if (s.dashT > 0) s.rachaTrail.push({ x: s.player.x, y: s.player.y - 2, age: 0 });
+          while (s.rachaTrail.length && s.rachaTrail[0].age > RACHA_TRAIL_LIFE) s.rachaTrail.shift();
+        }
+
+        // estela de notas musicales que arrastran al personaje en la súper de Roquero
+        if (s.roqueroTrail) {
+          s.roqueroTrail.forEach((pt) => (pt.age += dt));
+          if (s.roqueroBoostT > 0) s.roqueroTrail.push({ x: s.player.x, y: s.player.y - 4, age: 0 });
+          while (s.roqueroTrail.length && s.roqueroTrail[0].age > ROQUERO_TRAIL_LIFE) s.roqueroTrail.shift();
+        }
+
         // spikes hazard
-        if (s.invuln <= 0 && !shieldActive) {
+        if (s.invuln <= 0 && !metalActive) {
           const pRect = { x: s.player.x - PLAYER_R, y: s.player.y - PLAYER_R, w: PLAYER_R * 2, h: PLAYER_R * 2 };
           const spike = s.levelSpikes.find((sp) => rectsOverlap(pRect, sp));
           if (spike) {
@@ -1717,7 +3418,7 @@ function ChaseGame({
           let goalX = s.player.x, goalY = s.player.y;
           let mSpeed = monsterBaseSpeedForLevel(s.level) + Math.min(s.time * 0.9, 55);
           mSpeed = Math.max(60, mSpeed);
-          const seesPlayer = !(s.activeEffectAbility === "sigilo" && s.activeEffectT > 0);
+          const seesPlayer = true;
           if (!seesPlayer) {
             goalX = s.monster._lastSeenX ?? s.monster.x;
             goalY = s.monster._lastSeenY ?? s.monster.y;
@@ -1808,15 +3509,21 @@ function ChaseGame({
           s.monster.x = Math.max(MONSTER_R, Math.min(WORLD_W - MONSTER_R, s.monster.x));
           s.monster.y = Math.max(MONSTER_R, Math.min(WORLD_H - MONSTER_R, s.monster.y));
           activeWalls.forEach((wl) => circleRectPush(s.monster, MONSTER_R, wl));
+          s.metalBlobs.forEach((mb) => circleRectPush(s.monster, MONSTER_R, { x: mb.x - METAL_BLOB_R, y: mb.y - METAL_BLOB_R, w: METAL_BLOB_R * 2, h: METAL_BLOB_R * 2 }));
         }
 
-        // fire trail damage
-        if (s.activeEffectAbility === "fuego" && s.activeEffectT > 0 && !s.monsterDefeated) {
-          const d = Math.hypot(s.monster.x - s.player.x, s.monster.y - s.player.y);
-          if (d < 60) {
+        // bola de fuego: el monstruo que se acerca queda quemado (el radio se encoge cuando el fuego se disipa)
+        if (s.activeEffectAbility === "fuego" && s.activeEffectT > 0) {
+          const ballK = smooth01(Math.min(1, s.activeEffectT / BRASA_FADE_T));
+          const burnR = BRASA_BURN_R * (0.55 + 0.45 * ballK);
+          if (!s.monsterDefeated && Math.hypot(s.monster.x - s.player.x, s.monster.y - s.player.y) < burnR) {
             if (s.stunT <= 0) damageMonster(s);
             s.stunT = Math.max(s.stunT, 0.4);
+            s.monsterBurnT = Math.max(s.monsterBurnT, 1.0);
           }
+          s.cloneMonsters.forEach((c) => {
+            if (Math.hypot(c.x - s.player.x, c.y - s.player.y) < burnR * 0.92) { c.stunT = Math.max(c.stunT, 0.4); c.burnT = 1.0; }
+          });
         }
 
         // collisions
@@ -1825,21 +3532,19 @@ function ChaseGame({
           ...s.cloneMonsters.filter((c) => c.stunT <= 0).map((c) => ({ x: c.x, y: c.y, r: MONSTER_R * 0.86 })),
         ];
         const caughtBy = threats.find((t) => Math.hypot(t.x - s.player.x, t.y - s.player.y) < PLAYER_R + t.r - 4);
-        const stealthSafe = s.activeEffectAbility === "sigilo" && s.activeEffectT > 0;
-        if (caughtBy && s.invuln <= 0 && !stealthSafe && !shieldActive) {
-          if (s.activeEffectAbility === "clon" && s.activeEffectT > 0) {
-            s.cloneVanish = { x: s.player.x - s.facing.x * 16, y: s.player.y - s.facing.y * 16, t: 0.5 };
-            s.activeEffectT = 0;
-            s.clonePos = null;
-            s.invuln = 1.4;
-          } else {
-            s.lives -= 1;
-            s.invuln = 1.6;
-            s.player = { ...s.startPos };
-            s.monster = { ...s.monsterStartPos };
-            s.cloneMonsters = [];
-            if (s.lives <= 0) s.status = "lost";
+        const stealthSafe = false;
+        if (caughtBy && s.invuln <= 0 && !stealthSafe && !metalActive) {
+          if (ability === "ladron") {
+            // el monstruo lo toca: queda cortado por la mitad hasta que use el robo
+            s.ladronCut = true;
+            s.cutFx = { x: s.player.x, y: s.player.y, t: LADRON_CUT_FX_T, fx: s.facing.x, fy: s.facing.y, moving: !!s.moving };
           }
+          s.lives -= 1;
+          s.invuln = 1.6;
+          s.player = { ...s.startPos };
+          s.monster = { ...s.monsterStartPos };
+          s.cloneMonsters = [];
+          if (s.lives <= 0) s.status = "lost";
         }
         const exitRect = { x: s.player.x - PLAYER_R, y: s.player.y - PLAYER_R, w: PLAYER_R * 2, h: PLAYER_R * 2 };
         if (rectsOverlap(exitRect, EXIT) && s.status !== "won") {
@@ -1859,6 +3564,9 @@ function ChaseGame({
   }, [ability, secondaryAbility]);
 
   function draw(ctx, s, abilityId) {
+    // Ladrón: mientras esté cortado se dibuja partido en dos (salvo al ganar)
+    s.cutGap = s.ladronCut && s.status !== "won" ? LADRON_GAP : 0;
+    s.cutGlow = s.cutGap > 0 ? 0.4 : 0;
     const jungle = s.levelTheme === "jungle";
     const snow = s.levelTheme === "snow";
     const mountain = s.levelTheme === "mountain";
@@ -1889,9 +3597,222 @@ function ChaseGame({
     }
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
-    const camX = Math.max(0, Math.min(s.player.x - VIEW_W / 2, WORLD_W - VIEW_W));
+    const camFor = (wx) => Math.max(0, Math.min(wx - VIEW_W / 2, WORLD_W - VIEW_W));
+    let camX = camFor(s.player.x);
+    // Fase: la cámara se desliza hacia el lugar de llegada para que al reanudar no haya salto
+    const faseOn = s.faseT > 0 && !!s.faseFx;
+    const faseP = faseOn ? 1 - s.faseT / FASE_T : 0;
+    if (faseOn) camX += (camFor(s.faseFx.toX) - camX) * smooth01(seg01(faseP, 0.4, 0.85));
+    // Ladrón: durante el rayo la cámara acompaña a la energía hacia el monstruo y vuelve al stickman
+    const ladOn = s.ladronT > 0 && !!s.ladronFx;
+    const ladInfo = ladOn ? ladronPhase(s.ladronFx, s.ladronT) : null;
+    const ladRay = ladOn && ladInfo.phase === "ray";
+    if (ladRay) {
+      const ltl = ladronTimeline(ladInfo.p);
+      const ldist = Math.abs(s.monster.x - s.player.x);
+      const panMax = ldist < VIEW_W * 0.55 ? 0.5 : 1;
+      camX = camFor(s.player.x + (s.monster.x - s.player.x) * ltl.pan * panMax);
+    }
+
+    // Muerte: durante el corte la cámara acompaña el salto hacia el monstruo; en la pared de la súper, se centra entre ambos
+    const muerteOn = s.muerteT > 0 && !!s.muerteFx;
+    const muertePh = muerteOn ? muertePhase(s.muerteFx, s.muerteT) : null;
+    if (muerteOn && muertePh.phase === "strike") {
+      const mtl = muerteStrikeTimeline(muertePh.p);
+      const mdist = Math.abs(s.monster.x - s.player.x);
+      const mPanMax = mdist < VIEW_W * 0.55 ? 0.5 : 1;
+      camX = camFor(s.player.x + (s.monster.x - s.player.x) * mtl.pan * mPanMax);
+    } else if (muerteOn && muertePh.phase === "wall" && s.muerteFx.wall) {
+      camX = camFor((s.player.x + s.muerteFx.wall.touchX) / 2);
+    }
+
+    // Brasa: pausa total, la cámara se centra en el stickman
+    const brasaOn = s.brasaT > 0 && !!s.brasaFx;
+    const brasaP = brasaOn ? 1 - s.brasaT / (s.brasaFx.superMode ? BRASA_SUPER_T : BRASA_T) : 0;
 
     ctx.save();
+    // Fase: acercamiento suave a los dos portales durante la pausa
+    if (faseOn) {
+      const fzk = smooth01(seg01(faseP, 0, 0.2)) * (1 - smooth01(seg01(faseP, 0.85, 1)));
+      const fz = s.faseFx;
+      const pvx = (fz.ex + fz.xx) / 2 - camX, pvy = (fz.ey + fz.xy) / 2;
+      let zz = 1 + 0.3 * fzk;
+      // que el acercamiento nunca deje al stickman ni a los portales fuera de la pantalla (cerca del borde del mapa)
+      const zTop = Math.min(fz.ey, fz.xy, fz.fromY - 3) - 30, zBot = Math.max(fz.ey, fz.xy, fz.fromY - 3) + 30;
+      if (zTop < pvy) zz = Math.min(zz, Math.max(1, (pvy - 4) / (pvy - zTop)));
+      if (zBot > pvy) zz = Math.min(zz, Math.max(1, (VIEW_H - 4 - pvy) / (zBot - pvy)));
+      ctx.translate(pvx, pvy);
+      ctx.scale(zz, zz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Racha: pequeño acercamiento al stickman durante la pausa
+    if (s.rachaChargeT > 0) {
+      const pz = 1 - s.rachaChargeT / RACHA_CHARGE_T;
+      const kz = pz < 0.6 ? pz / 0.6 : 1 - (pz - 0.6) / 0.4;
+      const rz = 1 + 0.28 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(rz, rz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Tiempo: pequeño acercamiento al stickman mientras se voltea y dispara la esfera
+    if (s.tiempoT > 0) {
+      const pz = 1 - s.tiempoT / TIEMPO_T;
+      const kz = pz < 0.5 ? pz / 0.5 : 1 - (pz - 0.5) / 0.5;
+      const tz = 1 + 0.22 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(tz, tz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Súper Tiempo: acercamiento al stickman mientras salta y sube a la motocicleta
+    if (s.motoT > 0) {
+      const pz = 1 - s.motoT / MOTO_T;
+      const kz = pz < 0.55 ? pz / 0.55 : 1 - (pz - 0.55) / 0.45;
+      const mz = 1 + 0.25 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(mz, mz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Descarga: pequeño acercamiento al stickman durante la lluvia de rayos o el golpe de mano de la súper
+    if (s.electricoT > 0) {
+      const eT = s.electricoFx && s.electricoFx.superMode ? ELECTRICO_SUPER_T : ELECTRICO_T;
+      const pz = 1 - s.electricoT / eT;
+      const kz = pz < 0.5 ? pz / 0.5 : 1 - (pz - 0.5) / 0.5;
+      const ez = 1 + 0.24 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(ez, ez);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Luz: pequeño acercamiento al stickman mientras se carga y lanza el rayo, o brilla y se teletransporta
+    if (s.luzT > 0) {
+      const eT = s.luzFx && s.luzFx.superMode ? LUZ_SUPER_T : LUZ_T;
+      const pz = 1 - s.luzT / eT;
+      const kz = pz < 0.5 ? pz / 0.5 : 1 - (pz - 0.5) / 0.5;
+      const lz = 1 + 0.24 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(lz, lz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Metal: pequeño acercamiento al stickman mientras la capa de metal lo recubre
+    if (s.metalT > 0) {
+      const pz = 1 - s.metalT / METAL_T;
+      const kz = pz < 0.5 ? pz / 0.5 : 1 - (pz - 0.5) / 0.5;
+      const mz = 1 + 0.22 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(mz, mz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Súper Metal: acercamiento al stickman mientras apunta las manos y dispara los rayos
+    if (s.metalSuperT > 0) {
+      const pz = 1 - s.metalSuperT / METAL_SUPER_T;
+      const kz = pz < 0.5 ? pz / 0.5 : 1 - (pz - 0.5) / 0.5;
+      const mz = 1 + 0.24 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(mz, mz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Muerte: pequeño acercamiento al stickman durante toda la pausa (pared, brillo y corte)
+    if (muerteOn) {
+      const mTotal = s.muerteFx.total || 1;
+      const mp = 1 - s.muerteT / mTotal;
+      const kz = mp < 0.5 ? mp / 0.5 : 1 - (mp - 0.5) / 0.5;
+      const mz = 1 + 0.28 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(mz, mz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Láser: acercamiento al stickman mientras levanta las manos, retrocede y dispara el rayo
+    if (s.laserT > 0) {
+      const pz = 1 - s.laserT / LASER_T;
+      const kz = pz < 0.5 ? pz / 0.5 : 1 - (pz - 0.5) / 0.5;
+      const lz = 1 + 0.24 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(lz, lz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Súper Láser: acercamiento al stickman mientras se arrodilla, mira arriba y se tiñe de rojo
+    if (s.laserSuperT > 0) {
+      const pz = 1 - s.laserSuperT / LASER_SUPER_T;
+      const kz = pz < 0.5 ? pz / 0.5 : 1 - (pz - 0.5) / 0.5;
+      const lz = 1 + 0.26 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(lz, lz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Mutar: acercamiento al stickman mientras se pone verde, levanta la mano y lanza la nube
+    if (s.mutarT > 0) {
+      const pz = 1 - s.mutarT / MUTAR_T;
+      const kz = pz < 0.5 ? pz / 0.5 : 1 - (pz - 0.5) / 0.5;
+      const mz = 1 + 0.24 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(mz, mz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Súper Mutar: acercamiento al stickman mientras señala al monstruo y lanza las enredaderas
+    if (s.mutarSuperT > 0) {
+      const pz = 1 - s.mutarSuperT / MUTAR_SUPER_T;
+      const kz = pz < 0.5 ? pz / 0.5 : 1 - (pz - 0.5) / 0.5;
+      const mz = 1 + 0.24 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(mz, mz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Roquero: acercamiento al stickman mientras rasguea la guitarra hasta que sale la nota gigante
+    if (s.roqueroT > 0) {
+      const pz = 1 - s.roqueroT / ROQUERO_T;
+      const kz = pz < 0.5 ? pz / 0.5 : 1 - (pz - 0.5) / 0.5;
+      const rz = 1 + 0.24 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(rz, rz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Súper Roquero: acercamiento al stickman mientras rasguea la guitarra y salta
+    if (s.roqueroSuperT > 0) {
+      const pz = 1 - s.roqueroSuperT / ROQUERO_SUPER_T;
+      const kz = pz < 0.5 ? pz / 0.5 : 1 - (pz - 0.5) / 0.5;
+      const rz = 1 + 0.26 * (kz * kz * (3 - 2 * kz));
+      const pvx = s.player.x - camX, pvy = s.player.y;
+      ctx.translate(pvx, pvy);
+      ctx.scale(rz, rz);
+      ctx.translate(-pvx, -pvy);
+    }
+    // Ladrón: acercamiento al stickman (unión) y al cargar el rayo
+    if (ladOn) {
+      let lz = 1;
+      if (ladInfo.phase === "join") {
+        lz = 1 + 0.42 * smooth01(seg01(ladInfo.p, 0, 0.22)) * (1 - 0.4 * smooth01(seg01(ladInfo.p, 0.8, 1)));
+      } else {
+        const lead = s.ladronFx.wasCut ? 1 : smooth01(seg01(ladInfo.p, 0, 0.12));
+        lz = 1 + 0.25 * lead * (1 - smooth01(seg01(ladInfo.p, 0.26, 0.5)));
+      }
+      const lvx = s.player.x - camX, lvy = s.player.y;
+      ctx.translate(lvx, lvy);
+      ctx.scale(lz, lz);
+      ctx.translate(-lvx, -lvy);
+    }
+    // Brasa: la cámara se acerca y CENTRA al stickman (sin dejar nunca al descubierto lo que hay fuera del mapa)
+    if (brasaOn) {
+      const bt = s.brasaFx.superMode ? brasaSuperTimeline(brasaP) : brasaTimeline(brasaP);
+      const zz = 1 + (s.brasaFx.superMode ? 0.45 : 0.5) * bt.zoom;
+      const Px = s.player.x - camX, Py = s.player.y;
+      const cxT = Math.max(VIEW_W - zz * (VIEW_W - Px), Math.min(zz * Px, Px + (VIEW_W / 2 - Px) * bt.zoom));
+      const cyT = Math.max(VIEW_H - zz * (VIEW_H - Py), Math.min(zz * Py, Py + (VIEW_H / 2 - Py) * bt.zoom));
+      ctx.translate(cxT, cyT);
+      ctx.scale(zz, zz);
+      ctx.translate(-Px, -Py);
+    }
     ctx.translate(-camX, 0);
 
     if (jungle) {
@@ -2360,20 +4281,6 @@ function ChaseGame({
       ctx.globalAlpha = 1;
     }
 
-    // laser beam from the head
-    if (s.laserFx) {
-      const fx = s.laserFx;
-      const alpha = Math.max(0, Math.min(1, fx.t / 0.5));
-      ctx.globalAlpha = alpha;
-      ctx.strokeStyle = "#FFD3D3";
-      ctx.lineWidth = 6;
-      ctx.beginPath(); ctx.moveTo(fx.x1, fx.y1); ctx.lineTo(fx.x2, fx.y2); ctx.stroke();
-      ctx.strokeStyle = ABILITIES.laser.accent;
-      ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.moveTo(fx.x1, fx.y1); ctx.lineTo(fx.x2, fx.y2); ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-
     // rubble burst where the laser broke a wall
     if (s.wallBreakFx) {
       const fx = s.wallBreakFx;
@@ -2508,56 +4415,25 @@ function ChaseGame({
     }
 
     if (s.electricWall) {
-      const ew = s.electricWall;
-      const hx = Math.cos(ew.angle) * ew.len, hy = Math.sin(ew.angle) * ew.len;
-      ctx.strokeStyle = ABILITIES.electrico.accent;
-      ctx.lineWidth = 5;
-      ctx.globalAlpha = 0.5 + 0.5 * Math.sin(s.time * 30);
-      ctx.beginPath();
-      ctx.moveTo(ew.x - hx, ew.y - hy);
-      ctx.lineTo(ew.x + hx, ew.y + hy);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
+      // pared eléctrica circular (súper Descarga): rodea al stickman y se desvanece en el último tramo
+      const clock = s.rachaClock || 0;
+      const k = Math.min(1, s.electricWall.t / 0.4);
+      const R = ELECTRICO_WALL_R;
+      const n = 14;
+      for (let i = 0; i < n; i++) {
+        const a0 = (i / n) * Math.PI * 2 + clock * 0.6;
+        const a1 = ((i + 1) / n) * Math.PI * 2 + clock * 0.6;
+        const x1 = s.player.x + Math.cos(a0) * R, y1 = s.player.y + Math.sin(a0) * R;
+        const x2 = s.player.x + Math.cos(a1) * R, y2 = s.player.y + Math.sin(a1) * R;
+        drawLightningBolt(ctx, x1, y1, x2, y2, i * 7 + Math.floor(clock * 6), (0.55 + 0.45 * Math.sin(clock * 22 + i)) * k, ABILITIES.electrico.accent, 2.4);
+      }
     }
 
+    // paredes en llamas (súper Brasa): envueltas por completo; al final las llamas se apagan
     s.burningWalls.forEach((bw) => {
-      const grd = ctx.createRadialGradient(bw.x, bw.y, 1, bw.x, bw.y, 30);
-      grd.addColorStop(0, "rgba(255,170,50,0.35)");
-      grd.addColorStop(1, "rgba(232,70,15,0)");
-      ctx.fillStyle = grd;
-      ctx.beginPath();
-      ctx.arc(bw.x, bw.y, 30, 0, Math.PI * 2);
-      ctx.fill();
-
-      const n = 5;
-      for (let i = 0; i < n; i++) {
-        const off = (i - (n - 1) / 2) * 8;
-        const wob = Math.sin(s.time * 10 + i * 1.7 + bw.x) * 0.5 + 0.5;
-        const h = 12 + wob * 9;
-        const flick = Math.sin(s.time * 15 + i * 2) * 3;
-        const fx = bw.x + off, fy = bw.y + 10;
-        const g2 = ctx.createLinearGradient(fx, fy, fx + flick, fy - h);
-        g2.addColorStop(0, "rgba(200,40,10,0.95)");
-        g2.addColorStop(0.5, "rgba(255,150,40,0.9)");
-        g2.addColorStop(1, "rgba(255,220,110,0.2)");
-        ctx.fillStyle = g2;
-        ctx.beginPath();
-        ctx.moveTo(fx - 3.2, fy);
-        ctx.quadraticCurveTo(fx + flick - 4, fy - h * 0.5, fx + flick * 0.5, fy - h);
-        ctx.quadraticCurveTo(fx + flick + 4, fy - h * 0.5, fx + 3.2, fy);
-        ctx.closePath();
-        ctx.fill();
-      }
-      // rising embers off the burning wall
-      for (let i = 0; i < 3; i++) {
-        const ph = (s.time * 1.2 + i * 0.5 + bw.y * 0.01) % 1;
-        const ex = bw.x + Math.sin(s.time * 4 + i) * 10;
-        const ey = bw.y - ph * 30;
-        ctx.fillStyle = `rgba(255,200,90,${0.75 * (1 - ph)})`;
-        ctx.beginPath();
-        ctx.arc(ex, ey, 1.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      const wl = bw.wl || { x: bw.x - 12, y: bw.y - 12, w: 24, h: 24 };
+      if (wl.x + wl.w < camX - 40 || wl.x > camX + VIEW_W + 40) return;
+      drawWallFire(ctx, wl, s.rachaClock || 0, Math.min(1, bw.t / BRASA_WALL_FADE), null);
     });
 
     s.vineWalls.forEach((vw) => {
@@ -2599,54 +4475,56 @@ function ChaseGame({
       }
     });
 
-    s.decoyClones.forEach((dc) => {
-      ctx.globalAlpha = 0.55 + Math.sin(s.time * 6) * 0.1;
-      ctx.strokeStyle = ABILITIES.clon.accent;
-      ctx.fillStyle = ABILITIES.clon.accent;
-      ctx.lineWidth = 2;
-      ctx.lineCap = "round";
-      ctx.beginPath(); ctx.arc(dc.x, dc.y - 10, 4, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(dc.x, dc.y - 6); ctx.lineTo(dc.x, dc.y + 2);
-      ctx.moveTo(dc.x, dc.y - 4); ctx.lineTo(dc.x - 4, dc.y);
-      ctx.moveTo(dc.x, dc.y - 4); ctx.lineTo(dc.x + 4, dc.y);
-      ctx.moveTo(dc.x, dc.y + 2); ctx.lineTo(dc.x - 3, dc.y + 9);
-      ctx.moveTo(dc.x, dc.y + 2); ctx.lineTo(dc.x + 3, dc.y + 9);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    });
-
-    s.sawProjectiles.forEach((sp) => {
+    s.metalBlobs.forEach((mb) => {
+      const fadeK = mb.t < 1 ? mb.t : 1;
       ctx.save();
-      ctx.translate(sp.x, sp.y);
-      ctx.rotate(sp.t * 22);
-      ctx.fillStyle = "#B7BEC4";
-      ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = fadeK;
+      ctx.translate(mb.x, mb.y);
+      ctx.rotate(mb.seed * 6.28);
+      ctx.fillStyle = "#8A93A0";
+      ctx.beginPath();
+      for (let i = 0; i < 7; i++) {
+        const a3 = (i / 7) * Math.PI * 2;
+        const rr = METAL_BLOB_R * (0.75 + 0.35 * hsh(mb.seed * 97 + i * 13));
+        const px2 = Math.cos(a3) * rr, py2 = Math.sin(a3) * rr;
+        if (i === 0) ctx.moveTo(px2, py2); else ctx.lineTo(px2, py2);
+      }
+      ctx.closePath();
+      ctx.fill();
       ctx.strokeStyle = "#4A4E52";
       ctx.lineWidth = 1.4;
-      for (let i = 0; i < 8; i++) {
-        const a2 = (i / 8) * Math.PI * 2;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(a2) * 6, Math.sin(a2) * 6);
-        ctx.lineTo(Math.cos(a2) * 10, Math.sin(a2) * 10);
-        ctx.stroke();
-      }
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.beginPath(); ctx.ellipse(-METAL_BLOB_R * 0.25, -METAL_BLOB_R * 0.3, METAL_BLOB_R * 0.3, METAL_BLOB_R * 0.16, -0.4, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     });
 
-    s.tornadoProjs.forEach((tp2) => {
-      ctx.strokeStyle = ABILITIES.tornado.accent;
-      ctx.fillStyle = "rgba(92,138,166,0.25)";
-      ctx.save();
-      ctx.translate(tp2.x, tp2.y);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 11, 14, 0, 0, Math.PI * 2);
-      ctx.fill();
-      for (let i = 0; i < 3; i++) {
+    s.novaTriangles.forEach((tr) => {
+      if (tr.exploded) {
+        const burstK = 1 - Math.max(0, tr.t) / 0.45;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, tr.t) / 0.45;
+        ctx.fillStyle = "rgba(255,122,26,0.35)";
+        ctx.strokeStyle = ABILITIES.nova.accent;
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, 4 + i * 3, s.time * -20 + i, s.time * -20 + i + 3.2);
+        ctx.arc(tr.x, tr.y, 6 + burstK * NOVA_BLAST_R, 0, Math.PI * 2);
+        ctx.fill();
         ctx.stroke();
+        ctx.restore();
+        return;
       }
+      const igniting = tr.chainT != null;
+      const pulse = igniting ? 0.65 + 0.35 * Math.sin(s.time * 40) : 0.55 + 0.25 * Math.sin(s.time * 4 + tr.seed * 6.28);
+      ctx.save();
+      ctx.translate(tr.x, tr.y);
+      ctx.rotate(tr.seed * 6.28 + s.time * (igniting ? 3 : 0.15));
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = igniting ? "#FFCE7A" : ABILITIES.nova.accent;
+      ctx.beginPath();
+      ctx.moveTo(0, -13); ctx.lineTo(11, 8); ctx.lineTo(-11, 8);
+      ctx.closePath();
+      ctx.fill();
       ctx.restore();
     });
 
@@ -2709,85 +4587,25 @@ function ChaseGame({
         ctx.beginPath(); ctx.arc(p.x, p.y, 9, 0, Math.PI * 2); ctx.fill();
       }
     }
-    // fire trail — living flames licking up around the player, with rising embers
-    if (s.activeEffectAbility === "fuego" && s.activeEffectT > 0) {
-      const grd = ctx.createRadialGradient(s.player.x, s.player.y, 2, s.player.x, s.player.y, 58);
-      grd.addColorStop(0, "rgba(255,190,60,0.35)");
-      grd.addColorStop(1, "rgba(232,70,15,0)");
-      ctx.fillStyle = grd;
-      ctx.beginPath(); ctx.arc(s.player.x, s.player.y, 58, 0, Math.PI * 2); ctx.fill();
+    // (la bola de fuego de Brasa se dibuja junto con el jugador: ver drawPlayer)
 
-      const flameCount = 7;
-      for (let i = 0; i < flameCount; i++) {
-        const ang = (i / flameCount) * Math.PI * 2 + s.time * 0.6;
-        const wob = Math.sin(s.time * 9 + i * 2) * 0.5 + 0.5;
-        const baseR = 14 + wob * 6;
-        const fx = s.player.x + Math.cos(ang) * baseR;
-        const fy = s.player.y + Math.sin(ang) * baseR * 0.6;
-        const h = 10 + wob * 10;
-        const flick = Math.sin(s.time * 16 + i) * 2;
-        const flameGrd = ctx.createLinearGradient(fx, fy, fx + flick, fy - h);
-        flameGrd.addColorStop(0, "rgba(232,70,15,0.9)");
-        flameGrd.addColorStop(0.55, "rgba(255,150,40,0.85)");
-        flameGrd.addColorStop(1, "rgba(255,224,120,0.15)");
-        ctx.fillStyle = flameGrd;
-        ctx.beginPath();
-        ctx.moveTo(fx - 3, fy);
-        ctx.quadraticCurveTo(fx + flick - 4, fy - h * 0.55, fx + flick * 0.5, fy - h);
-        ctx.quadraticCurveTo(fx + flick + 4, fy - h * 0.55, fx + 3, fy);
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      for (let i = 0; i < 5; i++) {
-        const ph = (s.time * 1.4 + i * 0.37) % 1;
-        const ang = i * 2.1;
-        const ex = s.player.x + Math.cos(ang) * (10 + ph * 14);
-        const ey = s.player.y - ph * 34 + Math.sin(s.time * 3 + i) * 3;
-        ctx.fillStyle = `rgba(255,${190 + Math.floor(ph * 40)},80,${0.8 * (1 - ph)})`;
-        ctx.beginPath();
-        ctx.arc(ex, ey, 1.6 * (1 - ph * 0.5), 0, Math.PI * 2);
-        ctx.fill();
-      }
+    // portales de Fase cerrándose (el juego ya corrió de nuevo; el stickman queda delante)
+    if (s.portalFx) {
+      const pf = s.portalFx;
+      const kc = Math.max(0, pf.t / FASE_CLOSE_T);
+      const oc = kc * kc;
+      drawFaseLink(ctx, pf.ex, pf.ey, pf.xx, pf.xy, 1, s.rachaClock || 0, kc);
+      drawFasePortal(ctx, pf.xx, pf.xy, pf.dx, pf.dy, oc, s.rachaClock || 0, kc);
+      drawFasePortal(ctx, pf.ex, pf.ey, pf.dx, pf.dy, oc, s.rachaClock || 0, kc);
     }
 
-    // decoy clone, drawn as a faded double before the real player
-    if (s.clonePos) {
-      ctx.globalAlpha = 0.5 + Math.sin(s.time * 6) * 0.1;
-      ctx.strokeStyle = ABILITIES.clon.accent;
-      ctx.fillStyle = ABILITIES.clon.accent;
-      ctx.lineWidth = 2.2;
-      ctx.lineCap = "round";
-      const cx = s.clonePos.x, cy = s.clonePos.y;
-      ctx.beginPath(); ctx.arc(cx, cy - 15, 5.5, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - 9.5); ctx.lineTo(cx, cy + 2);
-      ctx.moveTo(cx, cy - 7); ctx.lineTo(cx - 6.5, cy + 2);
-      ctx.moveTo(cx, cy - 7); ctx.lineTo(cx + 6.5, cy + 2);
-      ctx.moveTo(cx, cy + 2); ctx.lineTo(cx - 4.5, cy + 15);
-      ctx.moveTo(cx, cy + 2); ctx.lineTo(cx + 4.5, cy + 15);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
+    // Súper Tiempo: mientras dura la súper velocidad, la motocicleta de relojes va debajo del jugador
+    if (s.timeRushT > 0) drawMotoBody(ctx, s.player.x, s.player.y, 1, (s.rachaClock || 0) * 46);
 
-    // burst where a clone was sacrificed
-    if (s.cloneVanish) {
-      ctx.strokeStyle = ABILITIES.clon.accent;
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = Math.min(1, s.cloneVanish.t / 0.5);
-      for (let i = 0; i < 8; i++) {
-        const ang = (i / 8) * Math.PI * 2;
-        const r2 = 6 + (1 - s.cloneVanish.t / 0.5) * 18;
-        ctx.beginPath();
-        ctx.moveTo(s.cloneVanish.x, s.cloneVanish.y);
-        ctx.lineTo(s.cloneVanish.x + Math.cos(ang) * r2, s.cloneVanish.y + Math.sin(ang) * r2);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-    }
-
-    // player
-    drawPlayer(ctx, s, abilityId);
+    // player (durante la carga de Racha y la pausa de Fase/Ladrón/Brasa/Tiempo/Moto se dibuja al final, encima del oscurecido)
+    if (!(s.rachaChargeT > 0) && !(s.faseT > 0) && !(s.ladronT > 0) && !(s.brasaT > 0) && !(s.tiempoT > 0) && !(s.motoT > 0) && !(s.muerteT > 0) && !(s.laserT > 0)) drawPlayerMaybeMetal(ctx, s, abilityId);
+    // Ladrón: el tajo donde el monstruo lo tocó (las dos mitades se separan y caen)
+    if (s.cutFx) drawCutGhost(ctx, s, abilityId);
 
     // charging ring while holding the ability button toward a super
     if (s.chargeT > 0 && s.chargeT < SUPER_HOLD) {
@@ -2826,77 +4644,17 @@ function ChaseGame({
       ctx.globalAlpha = 1;
     }
 
-    // sierra shield orbiting the player
-    if (s.activeEffectAbility === "sierra" && s.activeEffectT > 0) {
-      const spin = s.time * 9;
-      [spin, spin + Math.PI].forEach((ang) => {
-        const sx = s.player.x + Math.cos(ang) * 20;
-        const sy = s.player.y + Math.sin(ang) * 20;
-        ctx.save();
-        ctx.translate(sx, sy);
-        ctx.rotate(s.time * 26);
-        ctx.fillStyle = "#B7BEC4";
-        ctx.beginPath();
-        ctx.arc(0, 0, 7, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = "#4A4E52";
-        ctx.lineWidth = 1.4;
-        for (let i = 0; i < 8; i++) {
-          const a2 = (i / 8) * Math.PI * 2;
-          ctx.beginPath();
-          ctx.moveTo(Math.cos(a2) * 6, Math.sin(a2) * 6);
-          ctx.lineTo(Math.cos(a2) * 10, Math.sin(a2) * 10);
-          ctx.stroke();
-        }
-        ctx.fillStyle = "#5C6266";
-        ctx.beginPath();
-        ctx.arc(0, 0, 2.4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      });
-    }
-
-    // tornado carrying the player, and the twin funnel flying the other way
-    if (s.tornadoT > 0) {
-      ctx.strokeStyle = ABILITIES.tornado.accent;
-      ctx.globalAlpha = 0.7;
-      for (let i = 0; i < 3; i++) {
-        ctx.beginPath();
-        ctx.arc(s.player.x, s.player.y, 12 + i * 6, s.time * -16 + i, s.time * -16 + i + 4.2);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-    }
-    if (s.tornadoProj) {
-      const tp = s.tornadoProj;
-      ctx.strokeStyle = ABILITIES.tornado.accent;
-      ctx.fillStyle = "rgba(92,138,166,0.25)";
+    // capa de metal activa: brillo que recorre el contorno del cuerpo (ya gris y más grande)
+    if (s.activeEffectAbility === "metal" && s.activeEffectT > 0) {
+      const px = s.player.x, py = s.player.y;
       ctx.save();
-      ctx.translate(tp.x, tp.y);
+      const sweep = (s.time * 2.2) % 1;
+      ctx.strokeStyle = `rgba(240,245,250,${0.5 + 0.4 * Math.sin(s.time * 10)})`;
+      ctx.lineWidth = 1.6;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 13, 16, 0, 0, Math.PI * 2);
-      ctx.fill();
-      for (let i = 0; i < 3; i++) {
-        ctx.beginPath();
-        ctx.arc(0, 0, 5 + i * 4, s.time * -20 + i, s.time * -20 + i + 3.4);
-        ctx.stroke();
-      }
+      ctx.arc(px, py - 4, 15, sweep * Math.PI * 2, sweep * Math.PI * 2 + 1.2);
+      ctx.stroke();
       ctx.restore();
-    }
-    if (s.tornadoBurst) {
-      const fx = s.tornadoBurst;
-      ctx.strokeStyle = ABILITIES.tornado.accent;
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = Math.min(1, fx.t / 0.5);
-      for (let i = 0; i < 8; i++) {
-        const ang = (i / 8) * Math.PI * 2 + s.time * 6;
-        const r2 = 8 + (1 - fx.t / 0.5) * 30;
-        ctx.beginPath();
-        ctx.moveTo(fx.x, fx.y);
-        ctx.lineTo(fx.x + Math.cos(ang) * r2, fx.y + Math.sin(ang) * r2);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
     }
 
     // monster — drawn in profile, oriented toward its facing direction
@@ -2904,7 +4662,7 @@ function ChaseGame({
     const dancing = s.danceT > 0;
     const R = MONSTER_R;
 
-    if (!s.monsterDefeated) {
+    if (!s.monsterDefeated && !ladRay) {
       drawMonsterBody(ctx, s, abilityId, {
         x: s.monster.x,
         y: s.monster.y,
@@ -2915,6 +4673,8 @@ function ChaseGame({
         seed: 0,
         echo: false,
       });
+      // quemado por la bola de fuego o por las paredes en llamas
+      if (s.monsterBurnT > 0) drawBurnFlames(ctx, s.monster.x, s.monster.y, s.rachaClock || 0, Math.min(1, s.monsterBurnT / 0.5), 1);
     }
 
     s.cloneMonsters.forEach((c, i) => {
@@ -2928,6 +4688,7 @@ function ChaseGame({
         seed: i * 2.1 + 1,
         echo: true,
       });
+      if (c.burnT > 0) drawBurnFlames(ctx, c.x, c.y, s.rachaClock || 0, Math.min(1, c.burnT / 0.5), 0.86);
       if (c.lungeTelegraph > 0) {
         const alphaT = 0.5 + 0.5 * Math.sin(s.time * 30);
         ctx.strokeStyle = `rgba(200,30,30,${alphaT})`;
@@ -2962,6 +4723,25 @@ function ChaseGame({
         ctx.stroke();
       }
       ctx.globalAlpha = 1;
+    }
+
+    // Muerte: tajo morado brillante donde la hoz cortó al monstruo
+    if (s.monsterCutFx) {
+      const fx = s.monsterCutFx;
+      const u = 1 - fx.t / MUERTE_CUT_FX_T;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, fx.t / MUERTE_CUT_FX_T);
+      ctx.strokeStyle = "#C77DFF";
+      ctx.lineWidth = 3;
+      ctx.shadowColor = "rgba(180,80,255,0.9)";
+      ctx.shadowBlur = 10;
+      const a = MUERTE_CUT_A;
+      const len = MONSTER_R * 1.7 + u * 14;
+      ctx.beginPath();
+      ctx.moveTo(fx.x - Math.cos(a) * len, fx.y - Math.sin(a) * len);
+      ctx.lineTo(fx.x + Math.cos(a) * len, fx.y + Math.sin(a) * len);
+      ctx.stroke();
+      ctx.restore();
     }
 
     // stolen life coin
@@ -3001,26 +4781,715 @@ function ChaseGame({
       ctx.stroke();
     }
 
-    if (s.teleportFx) {
-      const fx = s.teleportFx;
-      ctx.strokeStyle = ABILITIES.fase.accent;
-      ctx.globalAlpha = Math.max(0, fx.t / 0.4) * 0.7;
-      ctx.setLineDash([5, 5]);
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(fx.fromX, fx.fromY);
-      ctx.lineTo(fx.toX, fx.toY);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      [{ x: fx.fromX, y: fx.fromY }, { x: fx.toX, y: fx.toY }].forEach((p) => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 10 * (1 - fx.t / 0.4), 0, Math.PI * 2);
-        ctx.stroke();
-      });
-      ctx.globalAlpha = 1;
+    // Racha: escena oscurecida y luz solo sobre el stickman mientras el juego está en pausa
+    if (s.rachaChargeT > 0) {
+      const pd = 1 - s.rachaChargeT / RACHA_CHARGE_T;
+      const dimK = pd < 0.12 ? pd / 0.12 : pd > 0.85 ? Math.max(0, (1 - pd) / 0.15) : 1;
+      const px = s.player.x, py = s.player.y;
+      const vg = ctx.createRadialGradient(px, py, 30, px, py, 260);
+      vg.addColorStop(0, `rgba(4,12,36,${0.25 * dimK})`);
+      vg.addColorStop(1, `rgba(4,12,36,${0.78 * dimK})`);
+      ctx.fillStyle = vg;
+      ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+      drawPlayer(ctx, s, abilityId);
     }
 
+    // Fase: escena oscurecida, mano extendida, portal, salto y reaparición
+    if (faseOn) drawFaseScene(ctx, s, abilityId, camX, faseP);
+
+    // Ladrón: unión de las dos mitades y rayo al monstruo (juego en pausa)
+    if (ladOn) drawLadronScene(ctx, s, abilityId, camX, ladInfo);
+
+    // Brasa: escena oscurecida, bola de fuego (habilidad) o manos que incendian las paredes (súper)
+    if (brasaOn) drawBrasaScene(ctx, s, abilityId, camX, brasaP);
+
+    // Tiempo: escena oscurecida, giro, brazo extendido y esfera verde hacia el monstruo
+    if (s.tiempoT > 0 && s.tiempoFx) drawTiempoScene(ctx, s, abilityId, camX, 1 - s.tiempoT / TIEMPO_T, s.tiempoFx);
+
+    // Súper Tiempo: escena oscurecida, salto y motocicleta de relojes apareciendo debajo
+    if (s.motoT > 0) drawMotoScene(ctx, s, abilityId, camX, 1 - s.motoT / MOTO_T);
+    if (s.electricoT > 0 && s.electricoFx) {
+      const eT = s.electricoFx.superMode ? ELECTRICO_SUPER_T : ELECTRICO_T;
+      drawElectricoScene(ctx, s, abilityId, camX, 1 - s.electricoT / eT);
+    }
+
+    // Luz: escena oscurecida — rayo gigante de luz al monstruo (habilidad) o brillo y teletransporte (súper)
+    if (s.luzT > 0 && s.luzFx) {
+      const eT = s.luzFx.superMode ? LUZ_SUPER_T : LUZ_T;
+      drawLuzScene(ctx, s, abilityId, camX, 1 - s.luzT / eT);
+    }
+
+    // Metal: escena oscurecida, capa de metal recubriendo el cuerpo
+    if (s.metalT > 0 && s.metalFx) drawMetalScene(ctx, s, abilityId, camX, 1 - s.metalT / METAL_T);
+
+    // Súper Metal: escena oscurecida, manos apuntando al frente y rayos formando bultos metálicos
+    if (s.metalSuperT > 0 && s.metalSuperFx) drawMetalSuperScene(ctx, s, abilityId, camX, 1 - s.metalSuperT / METAL_SUPER_T);
+    // Muerte: escena oscurecida — pared (súper) o brillo morado + hoz + corte al monstruo
+    if (muerteOn) drawMuerteScene(ctx, s, abilityId, camX, muertePh);
+    if (s.laserT > 0 && s.laserFx) drawLaserScene(ctx, s, abilityId, camX, 1 - s.laserT / LASER_T);
+    if (s.laserSuperT > 0 && s.laserSuperFx) drawLaserSuperScene(ctx, s, abilityId, camX, 1 - s.laserSuperT / LASER_SUPER_T);
+    if (s.novaT > 0 && s.novaFx) drawNovaScene(ctx, s, abilityId, camX, 1 - s.novaT / NOVA_T);
+    if (s.novaSuperT > 0 && s.novaSuperFx) drawNovaSuperScene(ctx, s, abilityId, camX, 1 - s.novaSuperT / NOVA_SUPER_T);
+    if (s.roqueroT > 0 && s.roqueroFx) drawRoqueroScene(ctx, s, abilityId, camX, 1 - s.roqueroT / ROQUERO_T);
+    if (s.roqueroSuperT > 0 && s.roqueroSuperFx) drawRoqueroSuperScene(ctx, s, abilityId, camX, 1 - s.roqueroSuperT / ROQUERO_SUPER_T);
+    // Mutar: escena oscurecida — se pone verde, levanta la mano y lanza la nube de gas
+    if (s.mutarT > 0 && s.mutarFx) drawMutarScene(ctx, s, abilityId, camX, 1 - s.mutarT / MUTAR_T);
+    // Súper Mutar: escena oscurecida — señala al monstruo y lanza montones de enredaderas
+    if (s.mutarSuperT > 0 && s.mutarSuperFx) drawMutarSuperScene(ctx, s, abilityId, camX, 1 - s.mutarSuperT / MUTAR_SUPER_T);
+
     ctx.restore();
+  }
+
+  // Dibuja el cuerpo (cualquier personaje) con una transformación: ancla (ox,oy) -> (px,py), escala sc*(sx,sy)
+  function drawBodyXf(ctx, s, abilityId, ox, oy, px, py, sc, sx, sy) {
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.scale(sc * sx, sc * sy);
+    ctx.translate(-ox, -oy);
+    drawPlayerBody(ctx, s, abilityId);
+    ctx.restore();
+  }
+
+  function drawFaseScene(ctx, s, abilityId, camX, p) {
+    const fz = s.faseFx;
+    if (!fz) return;
+    const tl = faseTimeline(p);
+    const clock = s.rachaClock || 0;
+    const ox = fz.fromX, oy = fz.fromY;
+
+    // escena oscurecida, con la luz sobre los dos portales
+    const dimK = p < 0.12 ? p / 0.12 : p > 0.88 ? Math.max(0, (1 - p) / 0.12) : 1;
+    const mx = (fz.ex + fz.xx) / 2, my = (fz.ey + fz.xy) / 2;
+    const vg = ctx.createRadialGradient(mx, my, 40, mx, my, 300);
+    vg.addColorStop(0, `rgba(3,14,40,${0.2 * dimK})`);
+    vg.addColorStop(1, `rgba(3,14,40,${0.78 * dimK})`);
+    ctx.fillStyle = vg;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // chispa en la punta de los dedos justo antes de que se abra el portal
+    if (tl.spark > 0.01) {
+      const hx = ox + fz.dx * 20, hy = oy - 5 + fz.dy * 20;
+      const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, 4 + 9 * tl.spark);
+      g.addColorStop(0, `rgba(255,255,255,${tl.spark})`);
+      g.addColorStop(1, "rgba(60,140,255,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(hx, hy, 4 + 9 * tl.spark, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // eje + portales
+    drawFaseLink(ctx, fz.ex, fz.ey, fz.xx, fz.xy, tl.link, clock, 1);
+    drawFasePortal(ctx, fz.xx, fz.xy, fz.dx, fz.dy, tl.exit, clock, 1);
+    drawFasePortal(ctx, fz.ex, fz.ey, fz.dx, fz.dy, tl.entry, clock, 1);
+
+    // stickman: mano extendida -> se agacha -> salta al portal -> sale por el segundo
+    s.faseArm = tl.arm;
+    const cy0 = oy - 3; // centro del cuerpo
+    if (p < 0.8) {
+      if (tl.jump <= 0) {
+        // de pie (o agachándose un poco) mirando al portal
+        const cr = Math.sin(tl.crouch * Math.PI * 0.5);
+        const feetY = oy + 15;
+        drawBodyXf(ctx, s, abilityId, ox, feetY, ox, feetY, 1, 1 + 0.06 * cr, 1 - 0.14 * cr);
+      } else {
+        const u = tl.jump;
+        const px = ox + (fz.ex - ox) * u;
+        const py = cy0 + (fz.ey - cy0) * u - Math.sin(u * Math.PI) * 18;
+        const sc = 1 - 0.68 * u * u;
+        drawBodyXf(ctx, s, abilityId, ox, cy0, px, py, sc, 1, 1);
+      }
+    } else {
+      const v = tl.emerge;
+      const sc = 0.3 + 0.7 * easeOutBack(seg01(v, 0, 0.75));
+      const py = fz.xy - Math.sin(v * Math.PI) * 8;
+      drawBodyXf(ctx, s, abilityId, ox, cy0, fz.xx, py, sc, 1, 1);
+    }
+    s.faseArm = 0;
+
+    // destellos: al entrar y al salir
+    drawFaseFlash(ctx, fz.ex, fz.ey, seg01(p, 0.76, 0.92));
+    drawFaseFlash(ctx, fz.xx, fz.xy, seg01(p, 0.8, 0.96));
+  }
+
+
+  // Dibuja el cuerpo (cualquier personaje) teñido de naranja brillante y con resplandor
+  function drawBodyOrange(ctx, s, abilityId, tint, clock) {
+    if (tint <= 0.01) { drawPlayerBody(ctx, s, abilityId); return; }
+    const S = 3, N = 240;
+    const x = s.player.x, y = s.player.y;
+    if (!_brasaOff) {
+      _brasaOff = document.createElement("canvas");
+      _brasaOff.width = N * S;
+      _brasaOff.height = N * S;
+    }
+    const o = _brasaOff.getContext("2d");
+    o.save();
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalAlpha = 1;
+    o.globalCompositeOperation = "source-over";
+    o.clearRect(0, 0, N * S, N * S);
+    o.setTransform(S, 0, 0, S, (N / 2 - x) * S, (N / 2 - y) * S);
+    drawPlayerBody(o, s, abilityId);
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalCompositeOperation = "source-atop";
+    const gr = o.createLinearGradient(0, (N / 2 - 24) * S, 0, (N / 2 + 18) * S);
+    gr.addColorStop(0, "#FFD24A");
+    gr.addColorStop(0.45, "#FF9A1A");
+    gr.addColorStop(1, "#FF5A0A");
+    o.globalAlpha = Math.min(1, tint * 1.05);
+    o.fillStyle = gr;
+    o.fillRect(0, 0, N * S, N * S);
+    o.restore();
+    ctx.save();
+    ctx.shadowColor = "rgba(255,120,20,0.95)";
+    ctx.shadowBlur = 14 * tint;
+    ctx.drawImage(_brasaOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+    // pasada aditiva: hace que el naranja brille
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.45 * tint * (0.85 + 0.15 * Math.sin(clock * 14));
+    ctx.drawImage(_brasaOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+  }
+
+  // Dibuja el cuerpo (cualquier personaje) teñido de gris metálico brillante
+  function drawBodyGray(ctx, s, abilityId, tint) {
+    if (tint <= 0.01) { drawPlayerBody(ctx, s, abilityId); return; }
+    const S = 3, N = 240;
+    const x = s.player.x, y = s.player.y;
+    if (!_metalOff) {
+      _metalOff = document.createElement("canvas");
+      _metalOff.width = N * S;
+      _metalOff.height = N * S;
+    }
+    const o = _metalOff.getContext("2d");
+    o.save();
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalAlpha = 1;
+    o.globalCompositeOperation = "source-over";
+    o.clearRect(0, 0, N * S, N * S);
+    o.setTransform(S, 0, 0, S, (N / 2 - x) * S, (N / 2 - y) * S);
+    drawPlayerBody(o, s, abilityId);
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalCompositeOperation = "source-atop";
+    const gr = o.createLinearGradient(0, (N / 2 - 24) * S, 0, (N / 2 + 18) * S);
+    gr.addColorStop(0, "#E7ECEF");
+    gr.addColorStop(0.45, "#9AA5B1");
+    gr.addColorStop(1, "#5C6266");
+    o.globalAlpha = Math.min(1, tint * 1.05);
+    o.fillStyle = gr;
+    o.fillRect(0, 0, N * S, N * S);
+    o.restore();
+    ctx.save();
+    ctx.shadowColor = "rgba(225,230,235,0.75)";
+    ctx.shadowBlur = 10 * tint;
+    ctx.drawImage(_metalOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.3 * tint * (0.85 + 0.15 * Math.sin((s.rachaClock || 0) * 14));
+    ctx.drawImage(_metalOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+  }
+
+  // Dibuja el cuerpo (cualquier personaje) teñido de un morado intenso y brillante
+  function drawBodyPurple(ctx, s, abilityId, tint) {
+    if (tint <= 0.01) { drawPlayerBody(ctx, s, abilityId); return; }
+    const S = 3, N = 240;
+    const x = s.player.x, y = s.player.y;
+    if (!_muerteOff) {
+      _muerteOff = document.createElement("canvas");
+      _muerteOff.width = N * S;
+      _muerteOff.height = N * S;
+    }
+    const o = _muerteOff.getContext("2d");
+    o.save();
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalAlpha = 1;
+    o.globalCompositeOperation = "source-over";
+    o.clearRect(0, 0, N * S, N * S);
+    o.setTransform(S, 0, 0, S, (N / 2 - x) * S, (N / 2 - y) * S);
+    drawPlayerBody(o, s, abilityId);
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalCompositeOperation = "source-atop";
+    const gr = o.createLinearGradient(0, (N / 2 - 24) * S, 0, (N / 2 + 18) * S);
+    gr.addColorStop(0, "#E4B8FF");
+    gr.addColorStop(0.45, "#9B3FD1");
+    gr.addColorStop(1, "#4A0F73");
+    o.globalAlpha = Math.min(1, tint * 1.05);
+    o.fillStyle = gr;
+    o.fillRect(0, 0, N * S, N * S);
+    o.restore();
+    ctx.save();
+    ctx.shadowColor = "rgba(190,110,255,0.95)";
+    ctx.shadowBlur = 16 * tint;
+    ctx.drawImage(_muerteOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.5 * tint * (0.85 + 0.15 * Math.sin((s.rachaClock || 0) * 14));
+    ctx.drawImage(_muerteOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+  }
+
+  // Igual que drawBodyPurple pero con un tinte blanco-dorado (carga/brillo de Luz)
+  function drawBodyLight(ctx, s, abilityId, tint) {
+    if (tint <= 0.01) { drawPlayerBody(ctx, s, abilityId); return; }
+    const S = 3, N = 240;
+    const x = s.player.x, y = s.player.y;
+    if (!_luzOff) {
+      _luzOff = document.createElement("canvas");
+      _luzOff.width = N * S;
+      _luzOff.height = N * S;
+    }
+    const o = _luzOff.getContext("2d");
+    o.save();
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalAlpha = 1;
+    o.globalCompositeOperation = "source-over";
+    o.clearRect(0, 0, N * S, N * S);
+    o.setTransform(S, 0, 0, S, (N / 2 - x) * S, (N / 2 - y) * S);
+    drawPlayerBody(o, s, abilityId);
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalCompositeOperation = "source-atop";
+    const gr = o.createLinearGradient(0, (N / 2 - 24) * S, 0, (N / 2 + 18) * S);
+    gr.addColorStop(0, "#FFFFFF");
+    gr.addColorStop(0.45, "#FFE9A8");
+    gr.addColorStop(1, "#FFC93C");
+    o.globalAlpha = Math.min(1, tint * 1.05);
+    o.fillStyle = gr;
+    o.fillRect(0, 0, N * S, N * S);
+    o.restore();
+    ctx.save();
+    ctx.shadowColor = "rgba(255,240,200,0.95)";
+    ctx.shadowBlur = 18 * tint;
+    ctx.drawImage(_luzOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.55 * tint * (0.85 + 0.15 * Math.sin((s.rachaClock || 0) * 14));
+    ctx.drawImage(_luzOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+  }
+
+  // Igual que drawBodyPurple pero con un tinte verde brillante (Mutar)
+  function drawBodyGreen(ctx, s, abilityId, tint) {
+    if (tint <= 0.01) { drawPlayerBody(ctx, s, abilityId); return; }
+    const S = 3, N = 240;
+    const x = s.player.x, y = s.player.y;
+    if (!_mutarOff) {
+      _mutarOff = document.createElement("canvas");
+      _mutarOff.width = N * S;
+      _mutarOff.height = N * S;
+    }
+    const o = _mutarOff.getContext("2d");
+    o.save();
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalAlpha = 1;
+    o.globalCompositeOperation = "source-over";
+    o.clearRect(0, 0, N * S, N * S);
+    o.setTransform(S, 0, 0, S, (N / 2 - x) * S, (N / 2 - y) * S);
+    drawPlayerBody(o, s, abilityId);
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalCompositeOperation = "source-atop";
+    const gr = o.createLinearGradient(0, (N / 2 - 24) * S, 0, (N / 2 + 18) * S);
+    gr.addColorStop(0, "#CDEFA0");
+    gr.addColorStop(0.45, "#5FAE33");
+    gr.addColorStop(1, "#215C10");
+    o.globalAlpha = Math.min(1, tint * 1.05);
+    o.fillStyle = gr;
+    o.fillRect(0, 0, N * S, N * S);
+    o.restore();
+    ctx.save();
+    ctx.shadowColor = "rgba(140,220,90,0.9)";
+    ctx.shadowBlur = 14 * tint;
+    ctx.drawImage(_mutarOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.45 * tint * (0.85 + 0.15 * Math.sin((s.rachaClock || 0) * 14));
+    ctx.drawImage(_mutarOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+  }
+
+  // Igual que drawBodyPurple pero con un tinte rojo brillante (súper Láser)
+  function drawBodyRed(ctx, s, abilityId, tint) {
+    if (tint <= 0.01) { drawPlayerBody(ctx, s, abilityId); return; }
+    const S = 3, N = 240;
+    const x = s.player.x, y = s.player.y;
+    if (!_laserOff) {
+      _laserOff = document.createElement("canvas");
+      _laserOff.width = N * S;
+      _laserOff.height = N * S;
+    }
+    const o = _laserOff.getContext("2d");
+    o.save();
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalAlpha = 1;
+    o.globalCompositeOperation = "source-over";
+    o.clearRect(0, 0, N * S, N * S);
+    o.setTransform(S, 0, 0, S, (N / 2 - x) * S, (N / 2 - y) * S);
+    drawPlayerBody(o, s, abilityId);
+    o.setTransform(1, 0, 0, 1, 0, 0);
+    o.globalCompositeOperation = "source-atop";
+    const gr = o.createLinearGradient(0, (N / 2 - 24) * S, 0, (N / 2 + 18) * S);
+    gr.addColorStop(0, "#FFB3B3");
+    gr.addColorStop(0.45, "#FF2E2E");
+    gr.addColorStop(1, "#B30000");
+    o.globalAlpha = Math.min(1, tint * 1.05);
+    o.fillStyle = gr;
+    o.fillRect(0, 0, N * S, N * S);
+    o.restore();
+    ctx.save();
+    ctx.shadowColor = "rgba(255,60,60,0.95)";
+    ctx.shadowBlur = 18 * tint;
+    ctx.drawImage(_laserOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.55 * tint * (0.85 + 0.15 * Math.sin((s.rachaClock || 0) * 14));
+    ctx.drawImage(_laserOff, x - N / 2, y - N / 2, N, N);
+    ctx.restore();
+  }
+
+  // Dibuja la hoz gigante de Muerte: mango oscuro + hoja curva morada brillante
+  function drawScythe(ctx, x, y, dirx, diry, k, alpha) {
+    if (k <= 0.01 || alpha <= 0.01) return;
+    const ang = Math.atan2(diry, dirx);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(ang);
+    ctx.globalAlpha = alpha;
+    const shaftLen = 34 * k;
+    ctx.strokeStyle = "#241326";
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-6 * k, 0);
+    ctx.lineTo(shaftLen, 0);
+    ctx.stroke();
+    ctx.strokeStyle = "#C77DFF";
+    ctx.lineWidth = 4.2 * k;
+    ctx.shadowColor = "rgba(180,80,255,0.9)";
+    ctx.shadowBlur = 12 * k;
+    ctx.beginPath();
+    ctx.arc(shaftLen, 10 * k, 20 * k, Math.PI * 1.1, Math.PI * 1.85, false);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Muerte (súper): el stickman camina hacia la pared más cercana, extiende el brazo y la toca;
+  // la pared brilla en morado y el personaje desaparece justo ahí.
+  function drawMuerteWallScene(ctx, s, abilityId, camX, p, fx) {
+    const tl = muerteWallTimeline(p);
+    const w = fx.wall;
+    const wx = w.fromX + (w.walkToX - w.fromX) * tl.walk;
+    const wy = w.fromY + (w.walkToY - w.fromY) * tl.walk;
+    const alpha = 1 - tl.fade;
+    const gs = { ...s, player: { x: wx, y: wy }, facing: w.dir, moving: false };
+    if (alpha > 0.02) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      drawBodyPurple(ctx, gs, abilityId, Math.max(0.22, tl.reach));
+      ctx.restore();
+    }
+    if (tl.reach > 0.02 && alpha > 0.02) {
+      ctx.save();
+      ctx.globalAlpha = alpha * tl.reach;
+      ctx.strokeStyle = "#C77DFF";
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(wx, wy - 4);
+      ctx.lineTo(w.touchX, w.touchY);
+      ctx.stroke();
+      ctx.restore();
+    }
+    if (tl.wallGlow > 0.02) {
+      ctx.save();
+      ctx.globalAlpha = tl.wallGlow;
+      ctx.fillStyle = "rgba(160,70,230,0.55)";
+      ctx.shadowColor = "rgba(190,110,255,0.95)";
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.arc(w.touchX, w.touchY, 20 + 6 * tl.wallGlow, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Muerte: el stickman brilla morado, hace crecer una hoz gigante, se desvanece de su lugar y
+  // aparece de golpe junto al monstruo dando el tajo; luego reaparece en su posición original.
+  function drawMuerteStrikeScene(ctx, s, abilityId, camX, p, fx) {
+    const tl = muerteStrikeTimeline(p);
+    const originX = fx.wall ? fx.wall.walkToX : fx.fromX;
+    const originY = fx.wall ? fx.wall.walkToY : fx.fromY;
+    const alphaOrigin = p < 0.5 ? 1 - smooth01(seg01(p, 0.4, 0.5)) : smooth01(seg01(p, 0.82, 1));
+    if (alphaOrigin > 0.02) {
+      const gs = { ...s, player: { x: originX, y: originY } };
+      ctx.save();
+      ctx.globalAlpha = alphaOrigin;
+      drawBodyPurple(ctx, gs, abilityId, tl.glow || (p >= 0.82 ? 0 : 1));
+      if (tl.scytheA > 0.02) {
+        drawScythe(ctx, originX, originY - 4, s.facing.x || 1, s.facing.y || 0, tl.scythe, tl.scytheA);
+      }
+      ctx.restore();
+    }
+    if (p > 0.36 && p < 0.56) {
+      const flashA = smooth01(seg01(p, 0.4, 0.48)) * (1 - smooth01(seg01(p, 0.5, 0.56)));
+      if (flashA > 0.02) {
+        ctx.save();
+        ctx.globalAlpha = flashA;
+        ctx.fillStyle = "#E4B8FF";
+        ctx.beginPath();
+        ctx.arc(originX, originY - 4, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    if (p >= 0.46) {
+      const mAlpha = smooth01(seg01(p, 0.46, 0.54)) * (1 - smooth01(seg01(p, 0.78, 0.92)));
+      if (mAlpha > 0.02) {
+        const mx = fx.monsterX, my = fx.monsterY;
+        const swing = easeOutCubic(seg01(p, 0.5, 0.62));
+        const gs2 = { ...s, player: { x: mx - 16, y: my }, facing: { x: 1, y: 0 } };
+        ctx.save();
+        ctx.globalAlpha = mAlpha;
+        drawBodyPurple(ctx, gs2, abilityId, 1);
+        drawScythe(ctx, mx - 16 + swing * 20, my - 4, 1, 0, 1, 1);
+        ctx.restore();
+      }
+      if (tl.impact > 0.02) {
+        ctx.save();
+        ctx.globalAlpha = tl.impact;
+        ctx.fillStyle = "rgba(200,120,255,0.85)";
+        ctx.shadowColor = "rgba(200,120,255,0.9)";
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(fx.monsterX, fx.monsterY, MONSTER_R * 0.9 + 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
+
+  function drawMuerteScene(ctx, s, abilityId, camX, info) {
+    const fx = s.muerteFx;
+    if (!fx) return;
+    if (info.phase === "wall" && fx.wall) drawMuerteWallScene(ctx, s, abilityId, camX, info.p, fx);
+    else drawMuerteStrikeScene(ctx, s, abilityId, camX, info.phase === "wall" ? 0 : info.p, fx);
+  }
+
+  // Mientras el blindaje de Metal está activo, el personaje se ve más grande y gris (teñido + escalado
+  // desde los pies, para que quede parado en el suelo).
+  function drawPlayerMaybeMetal(ctx, s, abilityId) {
+    if (s.laserStormT > 0) { drawBodyRed(ctx, s, abilityId, 1); return; }
+    const metalOn = s.activeEffectAbility === "metal" && s.activeEffectT > 0;
+    if (!metalOn) { drawPlayer(ctx, s, abilityId); return; }
+    const px = s.player.x, feetY = s.player.y + 15;
+    ctx.save();
+    ctx.translate(px, feetY);
+    ctx.scale(1.55, 1.55);
+    ctx.translate(-px, -feetY);
+    drawBodyGray(ctx, s, abilityId, 1);
+    ctx.restore();
+  }
+
+  // Tiempo: el stickman se voltea hacia el monstruo, extiende el brazo y lanza una esfera verde
+  // brillante que, al llegar, deja al monstruo congelado dentro de un anillo verde.
+  function drawTiempoScene(ctx, s, abilityId, camX, p, fx) {
+    const clock = s.rachaClock || 0;
+    const tl = tiempoTimeline(p);
+    const px = s.player.x, py = s.player.y;
+    const mx = s.monster.x, my = s.monster.y;
+    const dx = fx.dx, dy = fx.dy;
+    const shY = py - 5;
+
+    const dimK = p < 0.1 ? p / 0.1 : p > 0.92 ? Math.max(0, (1 - p) / 0.08) : 1;
+    ctx.fillStyle = `rgba(6,24,20,${0.55 * dimK})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // el stickman se voltea hacia el monstruo y extiende el brazo
+    s.facing = { x: dx, y: dy };
+    s.faseArm = tl.arm;
+    s.armDir = { x: dx, y: dy };
+    s.armColor = ABILITIES.tiempo.accent;
+    drawPlayerBody(ctx, s, abilityId);
+    s.faseArm = 0;
+    s.armDir = null;
+    s.armColor = null;
+
+    const reach = 19 * tl.arm;
+    const hx = px + dx * reach, hy = shY + dy * reach - 2 * tl.arm;
+
+    // chispas verdes que convergen en la mano mientras la esfera se forma
+    const chargeA = tl.arm * (1 - tl.travel);
+    if (chargeA > 0.05) {
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineWidth = 1.6;
+      for (let i = 0; i < 8; i++) {
+        const ph = (clock * 1.7 + i * 0.12) % 1;
+        const ang = i * 2.399 + clock * 3;
+        const d1 = (24 + 5 * (i % 3)) * (1 - ph);
+        ctx.strokeStyle = `rgba(120,225,190,${chargeA * (0.3 + 0.7 * ph)})`;
+        ctx.beginPath();
+        ctx.moveTo(hx + Math.cos(ang) * d1, hy + Math.sin(ang) * d1);
+        ctx.lineTo(hx + Math.cos(ang) * (d1 + 6), hy + Math.sin(ang) * (d1 + 6));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    // esfera formándose en la mano
+    if (chargeA > 0.01) {
+      const cr = 10 + 16 * tl.charge;
+      const og = ctx.createRadialGradient(hx, hy, 0, hx, hy, cr * 1.8);
+      og.addColorStop(0, `rgba(235,255,248,${chargeA})`);
+      og.addColorStop(0.35, `rgba(90,220,180,${chargeA * 0.95})`);
+      og.addColorStop(1, "rgba(63,160,137,0)");
+      ctx.fillStyle = og;
+      ctx.beginPath(); ctx.arc(hx, hy, cr * 1.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(235,255,248,${chargeA})`;
+      ctx.beginPath(); ctx.arc(hx, hy, cr * 0.55, 0, Math.PI * 2); ctx.fill();
+    }
+    // la esfera viaja de la mano al monstruo — grande, sólida y con halo bien visible
+    if (tl.travel > 0.001) {
+      const sx = hx + (mx - hx) * tl.travel, sy = hy + (my - hy) * tl.travel;
+      const r = TIEMPO_SPHERE_R * (1 - 0.2 * tl.hit);
+      // halo exterior amplio
+      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 2.6);
+      g.addColorStop(0, "rgba(120,255,210,0.55)");
+      g.addColorStop(0.55, "rgba(63,220,170,0.35)");
+      g.addColorStop(1, "rgba(63,160,137,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(sx, sy, r * 2.6, 0, Math.PI * 2); ctx.fill();
+      // cuerpo sólido de la esfera
+      const b = ctx.createRadialGradient(sx - r * 0.25, sy - r * 0.25, 0, sx, sy, r);
+      b.addColorStop(0, "#F2FFFA");
+      b.addColorStop(0.45, "#6BE3B4");
+      b.addColorStop(1, "#2E8F72");
+      ctx.fillStyle = b;
+      ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill();
+      // brillo central
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.beginPath(); ctx.arc(sx - r * 0.28, sy - r * 0.28, r * 0.32, 0, Math.PI * 2); ctx.fill();
+    }
+    // impacto: el monstruo queda congelado dentro de un anillo verde
+    if (tl.travel > 0.9) {
+      ctx.strokeStyle = ABILITIES.tiempo.accent;
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.55 + 0.45 * tl.hit;
+      ctx.beginPath();
+      ctx.arc(mx, my, MONSTER_R + 14 + 8 * (1 - tl.hit), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Súper Tiempo: el stickman se agacha, salta y aterriza sobre una motocicleta que en vez de
+  // ruedas tiene relojes analógicos; al arrancar obtiene la súper velocidad y la inmunidad de Racha.
+  function drawMotoScene(ctx, s, abilityId, camX, p) {
+    const tl = motoTimeline(p);
+    const px = s.player.x, py = s.player.y;
+
+    const dimK = p < 0.1 ? p / 0.1 : p > 0.92 ? Math.max(0, (1 - p) / 0.08) : 1;
+    ctx.fillStyle = `rgba(8,12,22,${0.5 * dimK})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    const jumpH = 24 * Math.sin(Math.PI * clamp01(tl.jump));
+    const crouch = 3 * tl.crouch * (1 - tl.jump);
+    const spin = (s.rachaClock || 0) * (6 + 46 * tl.rev);
+
+    drawMotoBody(ctx, px, py + crouch, tl.bike, spin);
+
+    ctx.save();
+    ctx.translate(0, -jumpH + crouch * 0.6);
+    drawPlayerBody(ctx, s, abilityId);
+    ctx.restore();
+  }
+
+  function drawBrasaScene(ctx, s, abilityId, camX, p) {
+    const fx = s.brasaFx;
+    if (!fx) return;
+    if (fx.superMode) { drawBrasaSuperScene(ctx, s, abilityId, camX, p); return; }
+    const tl = brasaTimeline(p);
+    const clock = s.rachaClock || 0;
+    const px = s.player.x, py = s.player.y;
+
+    // escena oscurecida (tono cálido) y luz solo sobre el stickman
+    const vg = ctx.createRadialGradient(px, py, 30, px, py, 300);
+    vg.addColorStop(0, `rgba(30,8,0,${0.3 * tl.dim})`);
+    vg.addColorStop(1, `rgba(20,5,0,${0.88 * tl.dim})`);
+    ctx.fillStyle = vg;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // el stickman se ve al principio y desaparece dentro de la bola de fuego
+    if (tl.body < 0.02) drawPlayerBody(ctx, s, abilityId);
+    else drawPlayerFaded(ctx, s, abilityId, 1 - tl.body);
+    drawBrasaBall(ctx, px, py, clock, { r: 0.3 + 0.7 * tl.grow, a: tl.ball, hard: tl.hard, bloom: tl.bloom });
+  }
+
+  function drawBrasaSuperScene(ctx, s, abilityId, camX, p) {
+    const fx = s.brasaFx;
+    const tl = brasaSuperTimeline(p);
+    const clock = s.rachaClock || 0;
+    const px = s.player.x, py = s.player.y;
+
+    // escena oscurecida (tono cálido) y luz solo sobre el stickman
+    const vg = ctx.createRadialGradient(px, py, 40, px, py, 340);
+    vg.addColorStop(0, `rgba(30,8,0,${0.26 * tl.dim})`);
+    vg.addColorStop(1, `rgba(20,5,0,${0.84 * tl.dim})`);
+    ctx.fillStyle = vg;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // paredes: se encienden de a poco, con luz propia por encima del oscurecido
+    fx.walls.forEach((w, i) => {
+      const k = brasaWallK(p, i);
+      if (k > 0.01) drawWallFire(ctx, w.wl, clock, k, { x: w.ox, y: w.oy });
+    });
+
+    // aura de calor alrededor del stickman
+    if (tl.tint > 0.02) {
+      const ag = ctx.createRadialGradient(px, py - 2, 4, px, py - 2, 46);
+      ag.addColorStop(0, `rgba(255,190,70,${0.55 * tl.tint})`);
+      ag.addColorStop(1, "rgba(255,110,20,0)");
+      ctx.fillStyle = ag;
+      ctx.beginPath(); ctx.arc(px, py - 2, 46, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // stickman naranja brillante con las dos manos apuntando hacia las paredes
+    s.brasaArms = { a: fx.hands[0].d, b: fx.hands[1].d, k: tl.arm };
+    drawBodyOrange(ctx, s, abilityId, tl.tint, clock);
+    s.brasaArms = null;
+
+    // llamitas que le salen del cuerpo
+    if (tl.tint > 0.05) {
+      for (let i = 0; i < 7; i++) {
+        const ph = (clock * 1.3 + i * 0.19) % 1;
+        const ox = (i - 3) * 3.2 + Math.sin(clock * 6 + i) * 1.6;
+        const oy = -15 + (i % 3) * 9;
+        drawFlame(ctx, px + ox, py + oy, 0, -1, (5 + 8 * ph) * tl.tint, 2.4, Math.sin(clock * 14 + i) * 1.6, tl.tint * (1 - ph * 0.6), 2);
+      }
+    }
+
+    // fuego en las palmas y chorros hacia las paredes
+    fx.hands.forEach((h) => {
+      const hp = brasaHand(s, h.d, tl.arm);
+      if (tl.jetA > 0.02) drawFireJet(ctx, hp.x, hp.y, h.ax, h.ay, tl.jet, clock, 1.25, tl.jetA);
+      if (tl.palm > 0.02) {
+        const gl = ctx.createRadialGradient(hp.x, hp.y, 0, hp.x, hp.y, 16 * tl.palm);
+        gl.addColorStop(0, `rgba(255,250,215,${0.95 * tl.palm})`);
+        gl.addColorStop(0.5, `rgba(255,170,50,${0.7 * tl.palm})`);
+        gl.addColorStop(1, "rgba(255,90,10,0)");
+        ctx.fillStyle = gl;
+        ctx.beginPath(); ctx.arc(hp.x, hp.y, 16 * tl.palm, 0, Math.PI * 2); ctx.fill();
+        const ang = Math.atan2(h.d.y, h.d.x);
+        for (let i = -1; i <= 1; i++) {
+          const a2 = ang + i * 0.42;
+          drawFlame(ctx, hp.x, hp.y, Math.cos(a2), Math.sin(a2), (7 + 6 * Math.sin(clock * 17 + i * 2)) * tl.palm + 3, 3, Math.sin(clock * 19 + i) * 1.8, tl.palm, 3);
+        }
+      }
+    });
   }
 
   function drawMonsterBody(ctx, s, abilityId, o) {
@@ -3142,10 +5611,1164 @@ function ChaseGame({
     ctx.restore();
   }
 
+  // Cuerpo del personaje: si está cortado (Ladrón) se dibuja partido en dos
+  function drawPlayerBody(ctx, s, abilityId) {
+    if ((s.cutGap || 0) > 0.05) {
+      drawSplitBody(ctx, s, abilityId, { gap: s.cutGap, glow: s.cutGlow || 0 });
+      return;
+    }
+    drawPlayerBodyRaw(ctx, s, abilityId);
+  }
+
+  // Parte el cuerpo (cualquier personaje) por una línea diagonal a la altura de la cintura.
+  // o = { gap, glow, slide?, upX?, upY?, upR?, upA?, loX?, loY?, loR?, loA? }
+  function drawSplitBody(ctx, s, abilityId, o) {
+    const x = s.player.x, y = s.player.y, cy0 = y - 2;
+    if (!_cutOff) {
+      _cutOff = document.createElement("canvas");
+      _cutOff.width = 480;
+      _cutOff.height = 480;
+    }
+    const octx = _cutOff.getContext("2d");
+    octx.setTransform(1, 0, 0, 1, 0, 0);
+    octx.clearRect(0, 0, 480, 480);
+    octx.setTransform(2, 0, 0, 2, (120 - x) * 2, (120 - y) * 2);
+    drawPlayerBodyRaw(octx, s, abilityId);
+    octx.setTransform(1, 0, 0, 1, 0, 0);
+
+    const ux = Math.cos(LADRON_CUT_A), uy = Math.sin(LADRON_CUT_A);
+    const nx = Math.sin(LADRON_CUT_A), ny = -Math.cos(LADRON_CUT_A); // normal hacia arriba
+    const g = o.gap || 0;
+    const sl = o.slide ?? g * 0.55;
+    const glow = o.glow || 0;
+    const clock = s.rachaClock || 0;
+    const rot = 0.05 * Math.min(1.6, g / LADRON_GAP);
+
+    // resplandor de energía entre las dos mitades
+    if (glow > 0.02) {
+      const gr = ctx.createRadialGradient(x, cy0, 1, x, cy0, 15 + g * 1.5);
+      gr.addColorStop(0, `rgba(255,214,120,${0.55 * glow})`);
+      gr.addColorStop(1, "rgba(255,150,30,0)");
+      ctx.fillStyle = gr;
+      ctx.beginPath(); ctx.arc(x, cy0, 15 + g * 1.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    const half = (dir, ox, oy, r, alpha) => {
+      if (alpha <= 0.01) return;
+      ctx.save();
+      ctx.globalAlpha *= alpha;
+      ctx.translate(x + ox, cy0 + oy);
+      ctx.rotate(r);
+      ctx.translate(-x, -cy0);
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x - ux * 90, cy0 - uy * 90);
+      ctx.lineTo(x + ux * 90, cy0 + uy * 90);
+      ctx.lineTo(x + ux * 90, cy0 + uy * 90 + dir * 130);
+      ctx.lineTo(x - ux * 90, cy0 - uy * 90 + dir * 130);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(_cutOff, x - 120, y - 120, 240, 240);
+      ctx.restore();
+      // filo brillante del corte
+      ctx.lineCap = "round";
+      ctx.strokeStyle = `rgba(255,190,70,${0.25 * glow})`;
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(x - ux * 8, cy0 - uy * 8); ctx.lineTo(x + ux * 8, cy0 + uy * 8); ctx.stroke();
+      ctx.strokeStyle = `rgba(255,214,110,${Math.min(1, 0.55 + 0.45 * glow)})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x - ux * 8, cy0 - uy * 8); ctx.lineTo(x + ux * 8, cy0 + uy * 8); ctx.stroke();
+      ctx.restore();
+    };
+    half(1, -nx * g - ux * sl + (o.loX || 0), -ny * g - uy * sl + (o.loY || 0) + Math.sin(clock * 4 + 2) * 0.5, o.loR ?? rot, o.loA ?? 1);
+    half(-1, nx * g + ux * sl + (o.upX || 0), ny * g + uy * sl + (o.upY || 0) + Math.sin(clock * 4) * 0.5, o.upR ?? -rot, o.upA ?? 1);
+  }
+
+  // El tajo en el lugar donde el monstruo tocó al stickman: las dos mitades se separan, caen y se desvanecen
+  function drawCutGhost(ctx, s, abilityId) {
+    const f = s.cutFx;
+    if (!f) return;
+    const u = 1 - f.t / LADRON_CUT_FX_T;
+    const cy0 = f.y - 2;
+    const ux = Math.cos(LADRON_CUT_A), uy = Math.sin(LADRON_CUT_A);
+    const gs = { ...s, player: { x: f.x, y: f.y }, facing: { x: f.fx, y: f.fy }, moving: f.moving, invuln: 0, faseArm: 0, cutGap: 0 };
+    const a = 1 - smooth01(seg01(u, 0.45, 1));
+    drawSplitBody(ctx, gs, abilityId, {
+      gap: LADRON_GAP + 7 * easeOutCubic(u), glow: 1 - u,
+      upX: -16 * u, upY: -8 * u + 34 * u * u, upR: -1.1 * u, upA: a,
+      loX: 11 * u, loY: 4 * u + 26 * u * u, loR: 0.8 * u, loA: a,
+    });
+    // destello del tajo
+    const sl = 1 - seg01(u, 0, 0.28);
+    if (sl > 0.01) {
+      ctx.save();
+      ctx.globalAlpha = sl;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "rgba(255,150,40,0.7)";
+      ctx.lineWidth = 8 * sl;
+      ctx.beginPath(); ctx.moveTo(f.x - ux * 30, cy0 - uy * 30); ctx.lineTo(f.x + ux * 30, cy0 + uy * 30); ctx.stroke();
+      ctx.strokeStyle = "#FFF6D6";
+      ctx.lineWidth = 1 + 3 * sl;
+      ctx.beginPath(); ctx.moveTo(f.x - ux * 30, cy0 - uy * 30); ctx.lineTo(f.x + ux * 30, cy0 + uy * 30); ctx.stroke();
+      ctx.lineWidth = 1.6;
+      for (let i = 0; i < 6; i++) {
+        const ang = i * 1.05 + 0.4;
+        const d1 = 6 + (1 - sl) * 16;
+        ctx.beginPath();
+        ctx.moveTo(f.x + Math.cos(ang) * d1, cy0 + Math.sin(ang) * d1);
+        ctx.lineTo(f.x + Math.cos(ang) * (d1 + 7), cy0 + Math.sin(ang) * (d1 + 7));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  // Metal: el juego se pausa, se centra en el personaje y una capa de metal lo va recubriendo.
+  function drawMetalScene(ctx, s, abilityId, camX, p) {
+    const tl = metalTimeline(p);
+    const px = s.player.x, py = s.player.y;
+
+    ctx.fillStyle = `rgba(16,18,22,${0.4 * smooth01(seg01(p, 0, 0.12)) * (1 - smooth01(seg01(p, 0.9, 1)))})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    {
+      const growK = smooth01(p);
+      const feetY = py + 15;
+      ctx.save();
+      ctx.translate(px, feetY);
+      ctx.scale(1 + 0.55 * growK, 1 + 0.55 * growK);
+      ctx.translate(-px, -feetY);
+      drawBodyGray(ctx, s, abilityId, growK);
+      ctx.restore();
+    }
+
+    if (tl.rise > 0.02) {
+      const r = 10 + 16 * tl.rise;
+      const g = ctx.createRadialGradient(px, py - 4, 0, px, py - 4, r);
+      g.addColorStop(0, `rgba(226,231,236,${0.5 * tl.rise})`);
+      g.addColorStop(0.55, `rgba(154,165,177,${0.5 * tl.rise})`);
+      g.addColorStop(1, "rgba(124,134,141,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(px, py - 4, r, 0, Math.PI * 2); ctx.fill();
+    }
+    if (tl.shine > 0.02) {
+      ctx.save();
+      ctx.strokeStyle = `rgba(240,245,250,${0.8 * (1 - tl.shine)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px, py - 4, 16 + tl.shine * 18, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // Súper Metal: ambas manos apuntan al frente y disparan 30 rayos metálicos cada una; donde caen
+  // dejan un bulto de metal que sólo el propio stickman puede atravesar.
+  function drawMetalSuperScene(ctx, s, abilityId, camX, p) {
+    const fx = s.metalSuperFx;
+    if (!fx) return;
+    const tl = metalSuperTimeline(p);
+    const px = s.player.x, py = s.player.y;
+
+    ctx.fillStyle = `rgba(16,18,22,${0.42 * smooth01(seg01(p, 0, 0.1)) * (1 - smooth01(seg01(p, 0.92, 1)))})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    s.brasaArms = { a: fx.hands[0], b: fx.hands[1], k: tl.aim };
+    drawPlayerBody(ctx, s, abilityId);
+    s.brasaArms = null;
+
+    if (tl.fire > 0.001) {
+      fx.hands.forEach((d, hi) => {
+        const hp = brasaHand(s, d, 1);
+        fx.rays.filter((r) => r.hand === hi).forEach((r) => {
+          const local = clamp01((tl.fire - r.delay) / Math.max(0.05, 1 - r.delay));
+          if (local <= 0) return;
+          const travel = easeOutCubic(Math.min(1, local * 1.5));
+          const rx = hp.x + (r.x - hp.x) * travel;
+          const ry = hp.y + (r.y - hp.y) * travel;
+          const fade = local < 1 ? 1 : Math.max(0, 1 - (local - 1) * 3);
+          ctx.strokeStyle = `rgba(210,218,224,${0.85 * fade})`;
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(hp.x, hp.y);
+          ctx.lineTo(rx, ry);
+          ctx.stroke();
+          if (local >= 0.97) {
+            ctx.save();
+            ctx.globalAlpha = fade;
+            ctx.fillStyle = "#9AA5B1";
+            ctx.beginPath(); ctx.arc(r.x, r.y, 3.5, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = "#4A4E52";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
+          }
+        });
+      });
+    }
+  }
+
+  // Descarga / Aturdir: el juego se pausa, le caen rayos amarillos encima y luego lanza un gran rayo al monstruo.
+  function drawElectricoScene(ctx, s, abilityId, camX, p) {
+    const fx = s.electricoFx;
+    if (!fx) return;
+    if (fx.superMode) { drawElectricoSuperScene(ctx, s, abilityId, camX, p); return; }
+    const tl = electricoTimeline(p);
+    const clock = s.rachaClock || 0;
+    const px = s.player.x, py = s.player.y;
+    const mx = s.monster.x, my = s.monster.y;
+
+    ctx.fillStyle = `rgba(24,20,4,${0.55 * tl.dim})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // lluvia de rayos amarillos cayendo sobre el personaje
+    fx.bolts.forEach((b) => {
+      const lp = smooth01(seg01(tl.rain, b.delay * 0.7, b.delay * 0.7 + 0.5));
+      if (lp <= 0.01) return;
+      const topY = py - 240;
+      const endY = py - 6 - 30 * (1 - lp);
+      drawLightningBolt(ctx, px + b.ox, topY, px + b.ox * 0.25, endY, b.seed, lp * (0.7 + 0.3 * Math.sin(clock * 30 + b.seed)), ABILITIES.electrico.accent, 3);
+      if (lp > 0.7) {
+        ctx.save();
+        ctx.globalAlpha = (lp - 0.7) / 0.3;
+        ctx.fillStyle = "#FFF6C8";
+        ctx.beginPath(); ctx.arc(px + b.ox * 0.25, endY, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+    });
+
+    // el personaje se carga en amarillo mientras le caen los rayos encima
+    if (tl.charge > 0.01) {
+      const g = ctx.createRadialGradient(px, py - 6, 4, px, py - 6, 34);
+      g.addColorStop(0, `rgba(255,240,170,${0.55 * tl.charge})`);
+      g.addColorStop(1, "rgba(255,200,40,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(px, py - 6, 34, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // extiende la mano hacia el monstruo
+    const dx0 = mx - px, dy0 = my - py;
+    const d0 = Math.hypot(dx0, dy0) || 1;
+    const dx = dx0 / d0, dy = dy0 / d0;
+    s.facing = { x: dx, y: dy };
+    s.faseArm = tl.arm;
+    s.armDir = { x: dx, y: dy };
+    s.armColor = ABILITIES.electrico.accent;
+    drawPlayerBody(ctx, s, abilityId);
+    s.faseArm = 0;
+    s.armDir = null;
+    s.armColor = null;
+
+    const reach = 19 * tl.arm;
+    const hx = px + dx * reach, hy = py - 5 + dy * reach;
+
+    // el gran rayo viaja de la mano al monstruo
+    if (tl.travel > 0.001) {
+      const tx = hx + (mx - hx) * tl.travel, ty = hy + (my - hy) * tl.travel;
+      drawLightningBolt(ctx, hx, hy, tx, ty, 3, 1, ABILITIES.electrico.accent, 5);
+    }
+    // impacto: el monstruo queda paralizado
+    if (tl.travel > 0.9) {
+      ctx.save();
+      ctx.strokeStyle = ABILITIES.electrico.accent;
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.55 + 0.45 * tl.hit;
+      ctx.beginPath();
+      ctx.arc(mx, my, MONSTER_R + 14 + 8 * (1 - tl.hit), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+  }
+
+  // Súper Descarga: el personaje levanta la mano, la baja con fuerza y de ahí nacen los rayos
+  // que forman la pared eléctrica circular a su alrededor.
+  function drawElectricoSuperScene(ctx, s, abilityId, camX, p) {
+    const tl = electricoSuperTimeline(p);
+    const fx = s.electricoFx;
+    const px = s.player.x, py = s.player.y;
+    const clock = s.rachaClock || 0;
+
+    ctx.fillStyle = `rgba(24,20,4,${0.55 * tl.dim})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    drawPlayerBody(ctx, s, abilityId);
+
+    // brazo: se levanta y luego baja con fuerza
+    const shX = px, shY = py - 16;
+    const raiseY = shY - 22 * tl.raise;
+    const downY = shY - 22 * (1 - tl.slam) + 5 * tl.slam;
+    const handY = tl.slam > 0.01 ? downY : raiseY;
+    ctx.save();
+    ctx.strokeStyle = "#3A342E";
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(shX, shY);
+    ctx.lineTo(shX, handY);
+    ctx.stroke();
+    if (tl.raise > 0.05 || tl.slam > 0.01) {
+      const g = ctx.createRadialGradient(shX, handY, 1, shX, handY, 12);
+      g.addColorStop(0, "rgba(255,240,170,0.85)");
+      g.addColorStop(1, "rgba(255,200,40,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(shX, handY, 12, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+
+    // del golpe de la mano nacen rayos que caen alrededor y forman la pared
+    if (tl.bolts > 0.01) {
+      fx.bolts.forEach((b) => {
+        const lp = smooth01(seg01(tl.bolts, b.delay, b.delay + 0.5));
+        if (lp <= 0.01) return;
+        const ex = px + Math.cos(b.ang) * ELECTRICO_WALL_R, ey = py + Math.sin(b.ang) * ELECTRICO_WALL_R;
+        drawLightningBolt(ctx, ex, ey - 180, ex, ey, b.seed, lp, ABILITIES.electrico.accent, 2.6);
+      });
+    }
+    // la pared eléctrica circular se forma alrededor del stickman
+    if (tl.wall > 0.01) {
+      const R = ELECTRICO_WALL_R;
+      const n = fx.bolts.length;
+      for (let i = 0; i < n; i++) {
+        const a0 = fx.bolts[i].ang, a1 = fx.bolts[(i + 1) % n].ang + (i === n - 1 ? Math.PI * 2 : 0);
+        const x1 = px + Math.cos(a0) * R, y1 = py + Math.sin(a0) * R;
+        const x2 = px + Math.cos(a1) * R, y2 = py + Math.sin(a1) * R;
+        drawLightningBolt(ctx, x1, y1, x2, y2, i * 5 + Math.floor(clock * 8), tl.wall * (0.6 + 0.4 * Math.sin(clock * 20 + i)), ABILITIES.electrico.accent, 2.4);
+      }
+    }
+  }
+
+  // Luz: el personaje se gira hacia el monstruo, se carga con un resplandor blanco-dorado y
+  // lanza un ultra gigantesco rayo de luz desde las manos que lo deja aturdido.
+  function drawLuzScene(ctx, s, abilityId, camX, p) {
+    const fx = s.luzFx;
+    if (!fx) return;
+    if (fx.superMode) { drawLuzSuperScene(ctx, s, abilityId, camX, p); return; }
+    const tl = luzTimeline(p);
+    const clock = s.rachaClock || 0;
+    const px = s.player.x, py = s.player.y;
+    const mx = s.monster.x, my = s.monster.y;
+
+    ctx.fillStyle = `rgba(20,18,10,${0.5 * tl.dim})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // se gira hacia el monstruo
+    const dx0 = mx - px, dy0 = my - py;
+    const d0 = Math.hypot(dx0, dy0) || 1;
+    const dx = dx0 / d0, dy = dy0 / d0;
+    s.facing = { x: dx, y: dy };
+
+    // se carga con un resplandor blanco-dorado
+    if (tl.charge > 0.01) {
+      const g = ctx.createRadialGradient(px, py - 6, 4, px, py - 6, 40);
+      g.addColorStop(0, `rgba(255,250,225,${0.6 * tl.charge})`);
+      g.addColorStop(1, "rgba(255,220,110,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(px, py - 6, 40, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // extiende las manos hacia el monstruo
+    s.faseArm = Math.max(tl.arm, tl.charge * 0.4);
+    s.armDir = { x: dx, y: dy };
+    s.armColor = ABILITIES.luz.accent;
+    drawBodyLight(ctx, s, abilityId, Math.max(tl.charge, tl.arm * 0.7));
+    s.faseArm = 0;
+    s.armDir = null;
+    s.armColor = null;
+
+    const reach = 22 * tl.arm;
+    const hx = px + dx * reach, hy = py - 5 + dy * reach;
+    const nx = -dy, ny = dx;
+
+    // el ultra gigantesco rayo de luz viaja de las manos al monstruo
+    if (tl.beam > 0.001) {
+      const tx = hx + (mx - hx) * tl.beam, ty = hy + (my - hy) * tl.beam;
+      drawLightBeam(ctx, hx - nx * 9, hy - ny * 9, tx - nx * 5, ty - ny * 5, clock, 1, ABILITIES.luz.accent);
+      drawLightBeam(ctx, hx + nx * 9, hy + ny * 9, tx + nx * 5, ty + ny * 5, clock, 1, ABILITIES.luz.accent);
+    }
+    // impacto: el monstruo queda aturdido
+    if (tl.beam > 0.9) {
+      ctx.save();
+      ctx.strokeStyle = ABILITIES.luz.accent;
+      ctx.lineWidth = 6;
+      ctx.globalAlpha = 0.6 + 0.4 * tl.hit;
+      ctx.beginPath();
+      ctx.arc(mx, my, MONSTER_R + 26 + 16 * (1 - tl.hit), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+  }
+
+  // Súper Luz: el personaje brilla con una luz blanca intensa hasta casi fundirse en el
+  // resplandor y se teletransporta a otro punto.
+  function drawLuzSuperScene(ctx, s, abilityId, camX, p) {
+    const tl = luzSuperTimeline(p);
+    const fx = s.luzFx;
+    if (!fx) return;
+
+    ctx.fillStyle = `rgba(20,18,10,${0.5 * tl.dim})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    const atTarget = p > 0.58;
+    const savedX = s.player.x, savedY = s.player.y;
+    s.player.x = atTarget ? fx.toX : fx.fromX;
+    s.player.y = atTarget ? fx.toY : fx.fromY;
+
+    const tint = atTarget ? tl.reveal : tl.glow;
+    drawBodyLight(ctx, s, abilityId, tint);
+
+    if (!atTarget && tl.vanish > 0.01) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const r = 30 * tl.vanish;
+      const g = ctx.createRadialGradient(fx.fromX, fx.fromY, 0, fx.fromX, fx.fromY, r);
+      g.addColorStop(0, `rgba(255,255,255,${0.9 * tl.vanish})`);
+      g.addColorStop(1, "rgba(255,240,190,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(fx.fromX, fx.fromY, r, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    if (atTarget) {
+      const rp = 1 - tl.reveal;
+      const r = 34 * (0.3 + 0.7 * rp);
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const g = ctx.createRadialGradient(fx.toX, fx.toY, 0, fx.toX, fx.toY, r);
+      g.addColorStop(0, `rgba(255,255,255,${0.85 * (0.3 + 0.7 * rp)})`);
+      g.addColorStop(1, "rgba(255,240,190,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(fx.toX, fx.toY, r, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    s.player.x = savedX;
+    s.player.y = savedY;
+  }
+
+  // Láser: levanta las manos, da un paso atrás y luego acerca/inclina la cabeza hacia adelante
+  // mientras dispara un gigantesco y enorme rayo desde los ojos hasta la primera pared en el camino.
+  function drawLaserScene(ctx, s, abilityId, camX, p) {
+    const fx = s.laserFx;
+    if (!fx) return;
+    const tl = laserTimeline(p);
+    const clock = s.rachaClock || 0;
+    const ox = fx.fromX, oy = fx.fromY;
+    const dx = fx.dx, dy = fx.dy;
+
+    const dimK = smooth01(seg01(p, 0, 0.15)) * (1 - smooth01(seg01(p, 0.92, 1)));
+    ctx.fillStyle = `rgba(20,10,10,${0.4 * dimK})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // paso atrás, y luego inclina/acerca la cabeza hacia adelante para disparar
+    const posX = ox - dx * LASER_BACK_DIST * tl.back + dx * LASER_LEAN_DIST * tl.lean;
+    const posY = oy - dy * LASER_BACK_DIST * tl.back + dy * LASER_LEAN_DIST * tl.lean;
+
+    s.laserCharge = tl.raise;
+    const gs = { ...s, player: { x: posX, y: posY }, facing: { x: dx, y: dy } };
+    drawPlayerBody(ctx, gs, abilityId);
+    s.laserCharge = 0;
+
+    const eyeGlow = Math.max(tl.charge, tl.beam) * tl.fade;
+    const hx = posX + dx * 4, hy = posY - 15 - 1;
+    if (eyeGlow > 0.01) {
+      const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, 4 + 8 * eyeGlow);
+      g.addColorStop(0, `rgba(255,220,220,${0.85 * eyeGlow})`);
+      g.addColorStop(1, "rgba(230,57,70,0)");
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(hx, hy, 4 + 8 * eyeGlow, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    // el gigantesco y enorme rayo sale de los ojos hacia el punto de impacto
+    const beamAmt = tl.beam * tl.fade;
+    if (beamAmt > 0.001) {
+      const ex = hx + (fx.hx - hx) * tl.beam;
+      const ey = hy + (fx.hy - hy) * tl.beam;
+      drawLightBeam(ctx, hx, hy, ex, ey, clock, beamAmt, ABILITIES.laser.accent);
+    }
+  }
+
+  // Súper Láser: se arrodilla, voltea el rostro hacia arriba y su cuerpo se tiñe de un rojo
+  // brillante; al terminar la pausa se desata la lluvia de rayos giratoria de siempre.
+  function drawLaserSuperScene(ctx, s, abilityId, camX, p) {
+    const fx = s.laserSuperFx;
+    if (!fx) return;
+    const tl = laserSuperTimeline(p);
+    const ox = fx.fromX, oy = fx.fromY;
+
+    const dimK = smooth01(seg01(p, 0, 0.12)) * (1 - smooth01(seg01(p, 0.92, 1)));
+    ctx.fillStyle = `rgba(30,6,6,${0.45 * dimK})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    s.laserKneel = tl.kneel;
+    const gs = { ...s, player: { x: ox, y: oy } };
+    drawBodyRed(ctx, gs, abilityId, tl.glow);
+    s.laserKneel = 0;
+
+    // el rostro brilla mirando hacia arriba justo antes de activarse
+    if (tl.lookUp > 0.01) {
+      const hx = ox, hy = oy - 15 - 5 - tl.kneel * 3;
+      const r = 3 + 6 * tl.lookUp;
+      const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, r * 2);
+      g.addColorStop(0, `rgba(255,210,210,${0.85 * tl.lookUp})`);
+      g.addColorStop(1, "rgba(255,40,40,0)");
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(hx, hy, r * 2, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    // destello final justo al activarse la súper habilidad
+    if (tl.flash > 0.01) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const r = 40 * tl.flash;
+      const g = ctx.createRadialGradient(ox, oy, 0, ox, oy, r);
+      g.addColorStop(0, `rgba(255,80,80,${0.9 * tl.flash})`);
+      g.addColorStop(1, "rgba(255,40,40,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(ox, oy, r, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Nova: el personaje da un giro rápido de 180° (se voltea) y de ambas manos salen 70
+  // triángulos que vuelan hasta pararse, ya formados, en un punto fijo delante de él.
+  function drawNovaScene(ctx, s, abilityId, camX, p) {
+    const fx = s.novaFx;
+    if (!fx) return;
+    const tl = novaTimeline(p);
+    const px = s.player.x, py = s.player.y;
+
+    ctx.fillStyle = `rgba(34,18,4,${0.4 * smooth01(seg01(p, 0, 0.1)) * (1 - smooth01(seg01(p, 0.92, 1)))})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // se voltea: giro rápido de 180° (truco clásico de scaleX de 1 a -1 y de vuelta)
+    const sx = Math.cos(tl.turn * Math.PI);
+    const feetY = py + 15;
+    drawBodyXf(ctx, s, abilityId, px, feetY, px, feetY, 1, sx, 1);
+
+    // de ambas manos salen los 70 triángulos, viajando (con un pequeño retraso cada uno) hasta
+    // pararse en el punto de formación
+    if (tl.throwP > 0.001) {
+      const handY = py - 14;
+      fx.triangles.forEach((tr, i) => {
+        const hx = px + (i % 2 === 0 ? -8 : 8);
+        const local = clamp01((tl.throwP - tr.delay) / Math.max(0.05, 1 - tr.delay));
+        if (local <= 0) return;
+        const travel = easeOutCubic(Math.min(1, local * 1.3));
+        const tx = hx + (tr.x - hx) * travel;
+        const ty = handY + (tr.y - handY) * travel;
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate(tr.seed * 6.28 + s.time * 6);
+        ctx.fillStyle = ABILITIES.nova.accent;
+        ctx.globalAlpha = 0.5 + 0.5 * Math.min(1, local * 2);
+        ctx.beginPath();
+        ctx.moveTo(0, -12); ctx.lineTo(10, 7); ctx.lineTo(-10, 7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+  }
+
+  // Súper Nova: el personaje se gira hacia el monstruo y dispara un rayo enorme y gigantesco
+  // que combina energía eléctrica (filamento amarillo en zigzag) y energía térmica (núcleo
+  // grueso naranja-rojo).
+  function drawNovaSuperScene(ctx, s, abilityId, camX, p) {
+    const fx = s.novaSuperFx;
+    if (!fx) return;
+    const tl = novaSuperTimeline(p);
+    const px = s.player.x, py = s.player.y;
+    const mx = fx.mx, my = fx.my;
+
+    ctx.fillStyle = `rgba(34,18,4,${0.5 * smooth01(seg01(p, 0, 0.1)) * (1 - smooth01(seg01(p, 0.92, 1)))})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    s.facing = { x: fx.dx, y: fx.dy };
+    const reach = 26 * tl.arm;
+    const hx = px + fx.dx * (10 + reach), hy = py - 6 + fx.dy * (10 + reach);
+
+    if (tl.charge > 0.01) {
+      const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, 20 + 46 * tl.charge);
+      g.addColorStop(0, `rgba(255,214,120,${0.7 * tl.charge})`);
+      g.addColorStop(0.5, `rgba(255,122,26,${0.5 * tl.charge})`);
+      g.addColorStop(1, "rgba(255,122,26,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(hx, hy, 20 + 46 * tl.charge, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // extiende la mano hacia el monstruo antes de disparar
+    s.faseArm = tl.arm;
+    s.armDir = { x: fx.dx, y: fx.dy };
+    s.armColor = "#FF7A1A";
+    drawPlayerBody(ctx, s, abilityId);
+    s.faseArm = 0;
+    s.armDir = null;
+    s.armColor = null;
+
+    if (tl.beam > 0.001) {
+      const tx = hx + (mx - hx) * tl.beam, ty = hy + (my - hy) * tl.beam;
+      const dxn = tx - hx, dyn = ty - hy;
+      const blen = Math.hypot(dxn, dyn) || 1;
+      const nx = -dyn / blen, ny = dxn / blen;
+      const growth = 0.6 + 0.4 * Math.min(1, tl.beam * 1.6); // el grosor crece a medida que avanza
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.globalCompositeOperation = "lighter";
+      // halo exterior gigantesco, suave
+      ctx.strokeStyle = "rgba(255,122,26,0.32)";
+      ctx.lineWidth = 260 * growth;
+      ctx.globalAlpha = 0.55;
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(tx, ty); ctx.stroke();
+      // segunda capa de halo, un poco más contenida
+      ctx.strokeStyle = "rgba(255,154,46,0.4)";
+      ctx.lineWidth = 170 * growth;
+      ctx.globalAlpha = 0.6;
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(tx, ty); ctx.stroke();
+      // núcleo térmico grueso naranja-rojo
+      ctx.strokeStyle = "#FF4E11";
+      ctx.lineWidth = 140 * growth;
+      ctx.globalAlpha = 0.8;
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(tx, ty); ctx.stroke();
+      ctx.strokeStyle = "#FF9A2E";
+      ctx.lineWidth = 84 * growth;
+      ctx.globalAlpha = 0.92;
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(tx, ty); ctx.stroke();
+      // filo interior blanco-amarillo, el corazón blanco del rayo
+      ctx.strokeStyle = "#FFF3C4";
+      ctx.lineWidth = 36 * growth;
+      ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(tx, ty); ctx.stroke();
+      ctx.restore();
+      // tres filamentos eléctricos entrelazados (efecto de trenza) recorriendo todo el ancho del rayo
+      const weave = 55 * growth;
+      drawLightningBolt(ctx, hx + nx * weave, hy + ny * weave, tx + nx * weave, ty + ny * weave, 4.1, 1, "#FFE066", 18 * growth);
+      drawLightningBolt(ctx, hx - nx * weave, hy - ny * weave, tx - nx * weave, ty - ny * weave, 9.7, 1, "#FFE066", 18 * growth);
+      drawLightningBolt(ctx, hx, hy, tx, ty, 2.3, 1, "#FFE066", 20 * growth);
+    }
+
+    if (tl.impact > 0.01) {
+      ctx.save();
+      ctx.globalAlpha = tl.impact;
+      ctx.fillStyle = "rgba(255,214,120,0.6)";
+      ctx.beginPath(); ctx.arc(mx, my, MONSTER_R + 130, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#FF7A1A";
+      ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.arc(mx, my, MONSTER_R + 145, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // Roquero: el personaje rasguea la guitarra cada vez más fuerte; de ella nace y crece una nota
+  // musical gigante que estalla justo antes de reanudar (la nota que viaja hasta el monstruo la
+  // dispara el bucle principal apenas termina la pausa).
+  function drawRoqueroScene(ctx, s, abilityId, camX, p) {
+    const fx = s.roqueroFx;
+    if (!fx) return;
+    const tl = roqueroTimeline(p);
+    const clock = s.rachaClock || 0;
+    const ox = fx.fromX, oy = fx.fromY;
+    const dx = s.facing.x, dy = s.facing.y;
+
+    const dimK = smooth01(seg01(p, 0, 0.12)) * (1 - smooth01(seg01(p, 0.94, 1)));
+    ctx.fillStyle = `rgba(30,10,24,${0.35 * dimK})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    s.roqueroStrum = tl.strum;
+    const gs = { ...s, player: { x: ox, y: oy }, facing: { x: dx, y: dy } };
+    drawPlayerBody(ctx, gs, abilityId);
+    s.roqueroStrum = 0;
+
+    const gx = ox + dx * 4, gy = oy - 1;
+    const growAmt = Math.max(tl.charge, tl.burst) * tl.fade;
+    if (growAmt > 0.01) {
+      const r = 3 + growAmt * 26;
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, r * 1.6);
+      g.addColorStop(0, `rgba(255,214,232,${0.85 * growAmt})`);
+      g.addColorStop(1, "rgba(214,51,108,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(gx, gy, r * 1.6, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      ctx.save();
+      ctx.fillStyle = ABILITIES.roquero.accent;
+      ctx.font = `bold ${10 + growAmt * 22}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.translate(gx, gy - growAmt * 4);
+      ctx.rotate(Math.sin(clock * 6) * 0.12 * tl.burst);
+      ctx.fillText("♪", 0, 0);
+      ctx.restore();
+    }
+  }
+
+  // Súper Roquero: rasguea la guitarra, salta, y unas notas musicales lo enganchan por detrás
+  // (el impulso de velocidad real de 5s lo arranca el bucle principal apenas termina la pausa).
+  function drawRoqueroSuperScene(ctx, s, abilityId, camX, p) {
+    const fx = s.roqueroSuperFx;
+    if (!fx) return;
+    const tl = roqueroSuperTimeline(p);
+    const clock = s.rachaClock || 0;
+    const ox = fx.fromX, oy = fx.fromY;
+    const dx = s.facing.x, dy = s.facing.y;
+
+    const dimK = smooth01(seg01(p, 0, 0.1)) * (1 - smooth01(seg01(p, 0.92, 1)));
+    ctx.fillStyle = `rgba(30,10,24,${0.4 * dimK})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    const liftY = oy - tl.jump * 16 - tl.drag * 6;
+    const posX = ox + dx * tl.drag * 24;
+
+    s.roqueroStrum = tl.strum;
+    s.roqueroJump = Math.max(tl.jump, tl.drag);
+    const gs = { ...s, player: { x: posX, y: liftY }, facing: { x: dx, y: dy } };
+    drawPlayerBody(ctx, gs, abilityId);
+    s.roqueroStrum = 0;
+    s.roqueroJump = 0;
+
+    if (tl.drag > 0.01) {
+      [0, 1, 2].forEach((i) => {
+        const back = 10 + i * 9 + tl.drag * 14;
+        const wob = Math.sin(clock * 10 + i * 2) * 4;
+        const nx = posX - dx * back, ny = liftY - dy * back + wob - 6;
+        ctx.save();
+        ctx.globalAlpha = (0.5 + 0.5 * tl.drag) * (1 - i * 0.22);
+        ctx.fillStyle = ABILITIES.roquero.accent;
+        ctx.font = "bold 15px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(i % 2 === 0 ? "♪" : "♫", nx, ny);
+        ctx.restore();
+      });
+    }
+  }
+
+  // Mutar: el personaje se pone verde, levanta la mano hacia el monstruo y lanza una nube de
+  // gas que viaja hasta él y lo envuelve (el aturdimiento real llega con la nube física de
+  // siempre justo al terminar la pausa).
+  function drawMutarScene(ctx, s, abilityId, camX, p) {
+    const fx = s.mutarFx;
+    if (!fx) return;
+    const tl = mutarTimeline(p);
+    const px = s.player.x, py = s.player.y;
+    const mx = s.monster.x, my = s.monster.y;
+
+    ctx.fillStyle = `rgba(12,20,8,${0.5 * tl.dim})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // se gira hacia el monstruo
+    const dx0 = mx - px, dy0 = my - py;
+    const d0 = Math.hypot(dx0, dy0) || 1;
+    const dx = dx0 / d0, dy = dy0 / d0;
+    s.facing = { x: dx, y: dy };
+
+    // el cuerpo se pone verde y levanta la mano
+    s.faseArm = tl.arm;
+    s.armDir = { x: dx, y: dy };
+    s.armColor = ABILITIES.mutar.accent;
+    drawBodyGreen(ctx, s, abilityId, tl.tint);
+    s.faseArm = 0;
+    s.armDir = null;
+    s.armColor = null;
+
+    const reach = 20 * tl.arm;
+    const hx = px + dx * reach, hy = py - 5 + dy * reach;
+
+    // la nube verde viaja hacia el monstruo, creciendo mientras avanza
+    if (tl.throwT > 0.001) {
+      const cx = hx + (mx - hx) * tl.throwT, cy = hy + (my - hy) * tl.throwT;
+      const r = 8 + 22 * tl.throwT;
+      const g = ctx.createRadialGradient(cx, cy, 1, cx, cy, r);
+      g.addColorStop(0, "rgba(196,238,148,0.75)");
+      g.addColorStop(0.55, "rgba(108,178,66,0.55)");
+      g.addColorStop(1, "rgba(58,118,38,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    }
+    // impacto: el monstruo queda envuelto en gas
+    if (tl.hit > 0.01) {
+      ctx.save();
+      ctx.strokeStyle = ABILITIES.mutar.accent;
+      ctx.lineWidth = 4;
+      ctx.globalAlpha = 0.55 + 0.45 * tl.hit;
+      ctx.beginPath();
+      ctx.arc(mx, my, MONSTER_R + 18 + 10 * (1 - tl.hit), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+  }
+
+  // Súper Mutar: el personaje señala al monstruo y lanza montones de enredaderas que salen de
+  // la mano y avanzan hasta envolverlo.
+  function drawMutarSuperScene(ctx, s, abilityId, camX, p) {
+    const fx = s.mutarSuperFx;
+    if (!fx) return;
+    const tl = mutarSuperTimeline(p);
+    const px = s.player.x, py = s.player.y;
+    const mx = s.monster.x, my = s.monster.y;
+
+    ctx.fillStyle = `rgba(12,20,8,${0.5 * tl.dim})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // señala al monstruo
+    const dx0 = mx - px, dy0 = my - py;
+    const d0 = Math.hypot(dx0, dy0) || 1;
+    const dx = dx0 / d0, dy = dy0 / d0;
+    s.facing = { x: dx, y: dy };
+
+    s.faseArm = Math.max(tl.aim, tl.vines > 0 ? 1 : 0);
+    s.armDir = { x: dx, y: dy };
+    s.armColor = ABILITIES.mutar.accent;
+    drawBodyGreen(ctx, s, abilityId, Math.max(tl.tint, tl.aim * 0.7));
+    s.faseArm = 0;
+    s.armDir = null;
+    s.armColor = null;
+
+    const reach = 20 * Math.max(tl.aim, tl.vines > 0 ? 1 : 0);
+    const hx = px + dx * reach, hy = py - 5 + dy * reach;
+
+    // montones de enredaderas salen de la mano y avanzan hasta el monstruo
+    if (tl.vines > 0.001) {
+      fx.vines.forEach((v) => {
+        const lp = smooth01(seg01(tl.vines, v.delay, v.delay + 0.5));
+        if (lp <= 0.01) return;
+        const tx = mx + v.ox, ty = my + v.oy;
+        const ex = hx + (tx - hx) * lp, ey = hy + (ty - hy) * lp;
+        const sway = Math.sin((s.rachaClock || 0) * 9 + v.seed) * 5 * lp;
+        ctx.strokeStyle = "#3D8A34";
+        ctx.lineWidth = 3;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(hx, hy);
+        ctx.quadraticCurveTo(hx + (ex - hx) * 0.5 + sway, hy + (ey - hy) * 0.5, ex, ey);
+        ctx.stroke();
+        ctx.fillStyle = "#5CAE4E";
+        ctx.save();
+        ctx.translate(ex, ey);
+        ctx.rotate(v.seed * 6.28);
+        ctx.beginPath(); ctx.ellipse(0, 0, 4, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      });
+    }
+    // impacto: el monstruo queda envuelto por las enredaderas
+    if (tl.vines > 0.75) {
+      const wrap = smooth01(seg01(tl.vines, 0.75, 1));
+      ctx.save();
+      ctx.strokeStyle = "#3D8A34";
+      ctx.lineWidth = 4;
+      ctx.globalAlpha = 0.6 * wrap;
+      ctx.beginPath();
+      ctx.arc(mx, my, MONSTER_R + 16 + 8 * (1 - wrap), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+  }
+
+  function drawLadronScene(ctx, s, abilityId, camX, info) {
+    const fx = s.ladronFx;
+    if (!fx) return;
+    if (info.phase === "join") drawLadronJoin(ctx, s, abilityId, camX, info.p);
+    else drawLadronRay(ctx, s, abilityId, camX, info.p, fx);
+  }
+
+  // Pausa 1: las dos mitades flotan, se atraen con hilos de energía y se unen con un destello
+  function drawLadronJoin(ctx, s, abilityId, camX, p) {
+    const clock = s.rachaClock || 0;
+    const px = s.player.x, py = s.player.y;
+    const ux = Math.cos(LADRON_CUT_A), uy = Math.sin(LADRON_CUT_A);
+    const nx = Math.sin(LADRON_CUT_A), ny = -Math.cos(LADRON_CUT_A);
+
+    const dimK = p < 0.12 ? p / 0.12 : p > 0.88 ? Math.max(0, (1 - p) / 0.12) : 1;
+    const vg = ctx.createRadialGradient(px, py, 26, px, py, 250);
+    vg.addColorStop(0, `rgba(24,12,2,${0.22 * dimK})`);
+    vg.addColorStop(1, `rgba(24,12,2,${0.8 * dimK})`);
+    ctx.fillStyle = vg;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    const rise = smooth01(seg01(p, 0.14, 0.46));         // se separan y flotan
+    const pull = Math.pow(seg01(p, 0.5, 0.72), 2.2);      // se atraen con fuerza
+    const gap = (LADRON_GAP + (8.5 - LADRON_GAP) * rise) * (1 - pull);
+    const glow = (0.4 + 0.6 * seg01(p, 0.12, 0.7)) * (1 - smooth01(seg01(p, 0.78, 0.98)));
+    const lift = 4 * rise * (1 - pull);
+    const cyL = py - 2 - lift;
+
+    s.cutGap = gap;
+    s.cutGlow = glow;
+    const q = seg01(p, 0.72, 1);
+    const sq = Math.sin(q * Math.PI * 3) * (1 - q) * 0.13; // rebote al unirse
+    const feetY = py + 15;
+    drawBodyXf(ctx, s, abilityId, px, feetY, px, feetY - lift, 1, 1 - sq * 0.6, 1 + sq);
+    s.cutGap = 0;
+    s.cutGlow = 0;
+
+    // hilos de energía entre las dos mitades
+    const thr = smooth01(seg01(p, 0.26, 0.46)) * (1 - seg01(p, 0.68, 0.74));
+    if (thr > 0.02 && gap > 0.6) {
+      ctx.save();
+      ctx.lineCap = "round";
+      for (let i = 0; i < 6; i++) {
+        const t = -8 + i * 3.2;
+        const ax = px + ux * t + nx * gap, ay = cyL + uy * t + ny * gap;
+        const bx = px + ux * t - nx * gap, by = cyL + uy * t - ny * gap;
+        const wob = Math.sin(clock * 14 + i * 1.7) * 2.2;
+        ctx.strokeStyle = `rgba(255,${190 + (i % 2) * 30},80,${0.85 * thr})`;
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.quadraticCurveTo((ax + bx) / 2 + wob, (ay + by) / 2, bx, by);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // motas de luz dorada subiendo alrededor
+    const moteA = smooth01(seg01(p, 0.05, 0.25)) * (1 - smooth01(seg01(p, 0.8, 0.98)));
+    for (let i = 0; i < 12; i++) {
+      const ph = (clock * 0.8 + i * 0.083) % 1;
+      const mx0 = px + Math.sin(i * 2.4 + clock * 2.2) * (9 + (i % 3) * 5);
+      const my0 = py + 16 - ph * 44;
+      ctx.fillStyle = `rgba(255,${200 + (i % 3) * 18},90,${moteA * Math.sin(ph * Math.PI) * 0.9})`;
+      ctx.beginPath(); ctx.arc(mx0, my0, 1.5 + (i % 2), 0, Math.PI * 2); ctx.fill();
+    }
+
+    // destello y onda al unirse
+    const snap = seg01(p, 0.7, 0.9);
+    if (snap > 0 && snap < 1) {
+      const R = 10 + 36 * snap;
+      const fg = ctx.createRadialGradient(px, cyL, 0, px, cyL, R);
+      fg.addColorStop(0, `rgba(255,250,225,${0.9 * (1 - snap)})`);
+      fg.addColorStop(1, "rgba(255,170,50,0)");
+      ctx.fillStyle = fg;
+      ctx.beginPath(); ctx.arc(px, cyL, R, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = `rgba(255,190,70,${0.9 * (1 - snap)})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(px, cyL, 8 + 40 * snap, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  // Pausa 2: el stickman extiende la mano, carga energía y lanza un gran rayo al monstruo;
+  // por el rayo vuelve la vida robada hacia él
+  function drawLadronRay(ctx, s, abilityId, camX, p, fx) {
+    const clock = s.rachaClock || 0;
+    const sup = fx.superMode;
+    const tl = ladronTimeline(p);
+    const px = s.player.x, py = s.player.y;
+    const mx = s.monster.x, my = s.monster.y;
+    const dx = fx.dx, dy = fx.dy;
+    const shY = py - 5;
+
+    const dimK = p < 0.1 ? p / 0.1 : p > 0.9 ? Math.max(0, (1 - p) / 0.1) : 1;
+    ctx.fillStyle = `rgba(22,10,2,${0.6 * dimK})`;
+    ctx.fillRect(camX - 700, -350, VIEW_W + 1400, VIEW_H + 700);
+
+    // stickman con el brazo extendido hacia el monstruo (retrocede un poco al disparar)
+    const recoil = 3.2 * Math.sin(Math.PI * seg01(p, 0.32, 0.56));
+    s.faseArm = tl.arm;
+    s.armDir = { x: dx, y: dy };
+    s.armColor = "#FFB03B";
+    ctx.save();
+    ctx.translate(-dx * recoil, -dy * recoil * 0.5);
+    drawPlayerBody(ctx, s, abilityId);
+    ctx.restore();
+    s.faseArm = 0;
+    s.armDir = null;
+    s.armColor = null;
+
+    const reach = 19 * tl.arm;
+    const hx0 = px + dx * reach - dx * recoil, hy0 = shY + dy * reach - 2 * tl.arm - dy * recoil * 0.5;
+    const ox = hx0 + dx * 4, oy = hy0 + dy * 4; // origen del rayo, justo delante de la mano
+
+    // monstruo: mira al stickman y tiembla con el impacto
+    const shakeA = seg01(p, 0.5, 0.56) * (1 - seg01(p, 0.8, 0.9)) * 2.4;
+    const shx = Math.sin(clock * 95) * shakeA, shy = Math.cos(clock * 83) * shakeA * 0.8;
+    drawMonsterBody(ctx, s, abilityId, {
+      x: mx + shx, y: my + shy, facingAngle: Math.atan2(-dy, -dx),
+      stunned: s.stunT > 0, dancing: s.danceT > 0, alpha: 1, seed: 0, echo: false,
+    });
+
+    // chispas que convergen en la mano mientras carga
+    const orbA = tl.arm * (1 - smooth01(seg01(p, 0.8, 0.92)));
+    const orbR = 2 + (sup ? 17 : 12) * tl.charge * (1 - 0.25 * tl.beam);
+    if (tl.arm > 0.2 && tl.beam < 0.99) {
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineWidth = 1.8;
+      for (let i = 0; i < 10; i++) {
+        const ph = (clock * 1.7 + i * 0.1) % 1;
+        const ang = i * 2.399 + clock * 3;
+        const d1 = (34 + 6 * (i % 3)) * (1 - ph) + orbR;
+        ctx.strokeStyle = `rgba(255,190,80,${orbA * (0.3 + 0.7 * ph) * (1 - tl.beam)})`;
+        ctx.beginPath();
+        ctx.moveTo(ox + Math.cos(ang) * d1, oy + Math.sin(ang) * d1);
+        ctx.lineTo(ox + Math.cos(ang) * (d1 + 7), oy + Math.sin(ang) * (d1 + 7));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // el gran rayo
+    if (tl.beam > 0.01) {
+      const tx = mx + shx * 0.3, ty = my + shy * 0.3;
+      const bx = ox + (tx - ox) * tl.head, by = oy + (ty - oy) * tl.head;
+      const W = (sup ? 13 : 9) * (1 - 0.35 * tl.drain) * (1 + 0.08 * Math.sin(clock * 45)) * (0.5 + 0.5 * seg01(p, 0.32, 0.42));
+      drawLadronBeam(ctx, ox, oy, bx, by, W, clock, tl.beam);
+    }
+    if (tl.head > 0.98) drawLadronImpact(ctx, mx, my, tl.hit, tl.beam, sup, clock);
+
+    // orbe de energía en la mano
+    if (tl.arm > 0.2 && orbA > 0.01) {
+      const og = ctx.createRadialGradient(ox, oy, 0, ox, oy, orbR * 1.8);
+      og.addColorStop(0, `rgba(255,252,235,${orbA})`);
+      og.addColorStop(0.35, `rgba(255,200,80,${orbA * 0.9})`);
+      og.addColorStop(1, "rgba(255,110,20,0)");
+      ctx.fillStyle = og;
+      ctx.beginPath(); ctx.arc(ox, oy, orbR * 1.8, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // la vida robada viaja por el rayo de vuelta al stickman
+    if (tl.drain > 0.001) {
+      const nxv = -dy, nyv = dx;
+      const moteA = smooth01(seg01(p, 0.56, 0.62)) * (1 - smooth01(seg01(p, 0.84, 0.9)));
+      for (let i = 0; i < 16; i++) {
+        const m = (clock * 1.4 + i / 16) % 1;
+        const wob = Math.sin(m * 12 + i) * 4;
+        ctx.fillStyle = `rgba(255,${170 + (i % 3) * 30},70,${0.85 * moteA})`;
+        ctx.beginPath();
+        ctx.arc(mx + (ox - mx) * m + nxv * wob, my + (oy - my) * m + nyv * wob, 1.7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const nH = sup ? 5 : 1;
+      const span = 1 - (nH - 1) * 0.12;
+      for (let j = 0; j < nH; j++) {
+        const u = Math.max(0, Math.min(1, (tl.drain - j * 0.12) / span));
+        if (u <= 0 || u >= 1) continue;
+        const e = u * u * (3 - 2 * u);
+        const wob = Math.sin(u * Math.PI * 3 + j * 1.3) * 5;
+        const hx = mx + (ox - mx) * e + nxv * wob, hy = my + (oy - my) * e + nyv * wob;
+        const size = (sup ? 6.5 : 10) * (0.45 + 0.55 * Math.min(1, u * 4)) * (1 - 0.45 * seg01(u, 0.85, 1));
+        ctx.fillStyle = "rgba(255,170,60,0.35)";
+        ctx.beginPath(); ctx.arc(hx, hy, size * 2.2, 0, Math.PI * 2); ctx.fill();
+        drawHeartShape(ctx, hx, hy, size);
+        ctx.fillStyle = "#FF5A36";
+        ctx.fill();
+        ctx.strokeStyle = "#FFF3D0";
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+      }
+    }
+
+    // la vida llega al stickman
+    if (tl.land > 0 && tl.land < 1) {
+      const lx = px, ly = py - 3;
+      const gl = ctx.createRadialGradient(lx, ly, 2, lx, ly, 34);
+      gl.addColorStop(0, `rgba(255,236,170,${0.7 * (1 - tl.land)})`);
+      gl.addColorStop(1, "rgba(255,120,30,0)");
+      ctx.fillStyle = gl;
+      ctx.beginPath(); ctx.arc(lx, ly, 34, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = `rgba(255,190,70,${0.9 * (1 - tl.land)})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(lx, ly, 10 + 34 * tl.land, 0, Math.PI * 2); ctx.stroke();
+      const ta = smooth01(seg01(tl.land, 0, 0.25)) * (1 - seg01(tl.land, 0.75, 1));
+      const label = fx.gain > 0 ? `+${fx.gain} ♥` : "♥ MAX";
+      const ty = py < 50 ? py + 34 + 12 * tl.land : py - 26 - 12 * tl.land;
+      ctx.save();
+      ctx.globalAlpha = ta;
+      ctx.font = "bold 15px 'Kalam', cursive";
+      ctx.textAlign = "center";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(120,40,0,0.9)";
+      ctx.strokeText(label, lx, ty);
+      ctx.fillStyle = "#FFE7A8";
+      ctx.fillText(label, lx, ty);
+      ctx.restore();
+    }
+  }
+
+  // Dibuja el cuerpo (cualquier personaje) con transparencia usando un canvas auxiliar
+  function drawPlayerFaded(ctx, s, abilityId, alpha) {
+    if (alpha <= 0.01) return;
+    if (!_rachaOff) {
+      _rachaOff = document.createElement("canvas");
+      _rachaOff.width = 240;
+      _rachaOff.height = 240;
+    }
+    const octx = _rachaOff.getContext("2d");
+    octx.setTransform(1, 0, 0, 1, 0, 0);
+    octx.clearRect(0, 0, 240, 240);
+    octx.translate(120 - s.player.x, 120 - s.player.y);
+    drawPlayerBody(octx, s, abilityId);
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.drawImage(_rachaOff, s.player.x - 120, s.player.y - 120);
+    ctx.restore();
+  }
+
+  // Con la bola de fuego de Brasa encendida el stickman se ve cada vez menos: dentro del fuego no se ve y,
+  // cuando el fuego se suaviza y se disipa, reaparece.
   function drawPlayer(ctx, s, abilityId) {
+    if (s.roqueroTrail && s.roqueroTrail.length > 0) drawRoqueroTrail(ctx, s);
+    const ball = brasaBallState(s);
+    if (!ball) { drawPlayerNoFire(ctx, s, abilityId); return; }
+    const rachaOn = s.rachaChargeT > 0 || s.dashT > 0 || s.rachaReveal > 0 || !!(s.rachaTrail && s.rachaTrail.length > 1);
+    if (rachaOn) drawPlayerNoFire(ctx, s, abilityId);
+    else if (ball.cover < 0.02) drawPlayerBody(ctx, s, abilityId);
+    else drawPlayerFaded(ctx, s, abilityId, 1 - ball.cover);
+    drawBrasaBall(ctx, s.player.x, s.player.y, s.rachaClock || 0, ball);
+  }
+
+  function drawPlayerNoFire(ctx, s, abilityId) {
+    const charging = s.rachaChargeT > 0;
+    const dashing = s.dashT > 0;
+    const revealing = s.rachaReveal > 0;
+    const hasTrail = !!(s.rachaTrail && s.rachaTrail.length > 1);
+    if (!charging && !dashing && !revealing && !hasTrail) {
+      drawPlayerBody(ctx, s, abilityId);
+      return;
+    }
+    const { x, y } = s.player;
+    drawRachaTrail(ctx, s);
+    if (charging) {
+      // brilla en azul hasta que el cuerpo desaparece y solo queda la energía
+      const p = 1 - s.rachaChargeT / RACHA_CHARGE_T;
+      const glow = Math.min(1, p / 0.8);
+      drawRachaHalo(ctx, s, x, y, glow, true, p);
+      drawPlayerFaded(ctx, s, abilityId, 1 - Math.min(1, Math.max(0, (glow - 0.15) / 0.8)));
+      drawRachaCore(ctx, s, x, y, glow);
+    } else if (dashing) {
+      // súper velocidad: solo se ve la energía azul
+      drawRachaHalo(ctx, s, x, y, 1, false, 1);
+      drawRachaCore(ctx, s, x, y, 1);
+    } else if (revealing) {
+      // la energía se disipa y el stickman reaparece
+      const q = s.rachaReveal / RACHA_REVEAL_T;
+      drawRachaHalo(ctx, s, x, y, q, false, 1);
+      drawPlayerFaded(ctx, s, abilityId, 1 - q);
+      drawRachaCore(ctx, s, x, y, q * 0.8);
+      ctx.save();
+      ctx.strokeStyle = `rgba(63,140,255,${q * 0.8})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(x, y - 2, 14 + (1 - q) * 30, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      drawPlayerBody(ctx, s, abilityId);
+    }
+  }
+
+  function drawPlayerBodyRaw(ctx, s, abilityId) {
     const { x, y } = s.player;
     const bodyColor = s.playerColor || "#2B2A28";
-    const stealthActive = s.activeEffectAbility === "sigilo" && s.activeEffectT > 0;
+    const stealthActive = false;
 
     if (s.characterKind && s.characterKind !== "stickman") {
       ctx.save();
@@ -3338,11 +6961,6 @@ function ChaseGame({
     }
 
     ctx.save();
-    if (s.tornadoT > 0) {
-      ctx.translate(x, y);
-      ctx.rotate(s.time * 22);
-      ctx.translate(-x, -y);
-    }
     ctx.globalAlpha = stealthActive ? 0.35 : s.invuln > 0 ? 0.5 + 0.5 * Math.sin(s.time * 20) : 1;
 
     if (s.dashT > 0) {
@@ -3519,12 +7137,30 @@ function ChaseGame({
     }
 
     if (abilityId === "laser") {
-      ctx.fillStyle = ABILITIES.laser.accent;
-      ctx.globalAlpha *= 0.7 + Math.sin(s.time * 10) * 0.3;
-      ctx.beginPath();
-      ctx.arc(x + s.facing.x * 4, hipY - 15 - 1, 1.6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = stealthActive ? 0.35 : s.invuln > 0 ? 0.5 + 0.5 * Math.sin(s.time * 20) : 1;
+      const chargeAmt = Math.max(s.laserCharge || 0, s.laserKneel || 0);
+      if (chargeAmt > 0.01) {
+        // ojos brillando con fuerza mientras carga el rayo (o mira hacia arriba en la súper)
+        const gx = s.laserKneel > 0 ? shoulderX : shoulderX + s.facing.x * 4;
+        const gy = s.laserKneel > 0 ? hipY - 15 - 5 : hipY - 15 - 1;
+        const r = 1.6 + chargeAmt * 6;
+        const grd = ctx.createRadialGradient(gx, gy, 0, gx, gy, r * 2.2);
+        grd.addColorStop(0, "rgba(255,235,235,0.9)");
+        grd.addColorStop(1, "rgba(230,57,70,0)");
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.fillStyle = grd;
+        ctx.beginPath(); ctx.arc(gx, gy, r * 2.2, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+        ctx.fillStyle = ABILITIES.laser.accent;
+        ctx.beginPath(); ctx.arc(gx, gy, r, 0, Math.PI * 2); ctx.fill();
+      } else {
+        ctx.fillStyle = ABILITIES.laser.accent;
+        ctx.globalAlpha *= 0.7 + Math.sin(s.time * 10) * 0.3;
+        ctx.beginPath();
+        ctx.arc(x + s.facing.x * 4, hipY - 15 - 1, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = stealthActive ? 0.35 : s.invuln > 0 ? 0.5 + 0.5 * Math.sin(s.time * 20) : 1;
+      }
       ctx.fillStyle = bodyColor;
     }
 
@@ -3544,6 +7180,98 @@ function ChaseGame({
       ctx.moveTo(x, hipY - 7);
       ctx.lineTo(lHandX, lHandY);
       ctx.moveTo(x, hipY - 7);
+      ctx.lineTo(rHandX, rHandY);
+    } else if (s.brasaArms && s.brasaArms.k > 0) {
+      // súper Brasa: los dos brazos se extienden hacia las paredes, con las palmas abiertas
+      const ba = s.brasaArms, kk = ba.k;
+      const shY = hipY - 7;
+      const reach = 20 * kk;
+      const hands = [];
+      [ba.a, ba.b].forEach((d) => {
+        const hx = x + d.x * reach, hy = shY + d.y * reach - 1.5 * kk;
+        const ex = x + d.x * reach * 0.5 - d.y * 1.8 * (1 - 0.6 * kk), ey = shY + d.y * reach * 0.5 + d.x * 1.8 * (1 - 0.6 * kk);
+        ctx.moveTo(x, shY);
+        ctx.lineTo(ex, ey);
+        ctx.lineTo(hx, hy);
+        hands.push([hx, hy, d]);
+      });
+      lHandX = hands[0][0]; lHandY = hands[0][1];
+      rHandX = hands[1][0]; rHandY = hands[1][1];
+      ctx.stroke();
+      // dedos abiertos en abanico hacia la pared
+      ctx.lineWidth = 1.3;
+      hands.forEach(([hx, hy, d]) => {
+        const ha = Math.atan2(d.y, d.x);
+        [-0.55, -0.18, 0.18, 0.55].forEach((off) => {
+          ctx.beginPath();
+          ctx.moveTo(hx, hy);
+          ctx.lineTo(hx + Math.cos(ha + off) * 4.6 * kk, hy + Math.sin(ha + off) * 4.6 * kk);
+          ctx.stroke();
+        });
+      });
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+    } else if (s.faseArm > 0) {
+      // Fase: un brazo cuelga y el otro se extiende hacia el portal con la mano abierta
+      const fa = s.faseArm;
+      const fdx = s.armDir ? s.armDir.x : s.faseFx ? s.faseFx.dx : s.facing.x, fdy = s.armDir ? s.armDir.y : s.faseFx ? s.faseFx.dy : s.facing.y;
+      const side = fdx >= 0 ? 1 : -1;
+      const shY = hipY - 7;
+      const reach = 19 * fa;
+      const rhx = x + fdx * reach, rhy = shY + fdy * reach - 2 * fa;
+      const rex = x + fdx * reach * 0.5 - fdy * 2.4 * (1 - 0.6 * fa), rey = shY + fdy * reach * 0.5 + fdx * 2.4 * (1 - 0.6 * fa) - fa;
+      const idleX = x - side * 6.5, idleY = hipY;
+      if (side > 0) { lHandX = idleX; lHandY = idleY; rHandX = rhx; rHandY = rhy; }
+      else { rHandX = idleX; rHandY = idleY; lHandX = rhx; lHandY = rhy; }
+      ctx.moveTo(x, shY);
+      ctx.lineTo(idleX, idleY);
+      ctx.moveTo(x, shY);
+      ctx.lineTo(rex, rey);
+      ctx.lineTo(rhx, rhy);
+      ctx.stroke();
+      // mano abierta, dedos abiertos en abanico hacia el portal
+      const ha = Math.atan2(fdy, fdx);
+      ctx.strokeStyle = s.armColor || ABILITIES.fase.accent;
+      ctx.lineWidth = 1.3;
+      [-0.55, -0.18, 0.18, 0.55].forEach((off) => {
+        ctx.beginPath();
+        ctx.moveTo(rhx, rhy);
+        ctx.lineTo(rhx + Math.cos(ha + off) * 4.6 * fa, rhy + Math.sin(ha + off) * 4.6 * fa);
+        ctx.stroke();
+      });
+      ctx.strokeStyle = bodyColor;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+    } else if (s.roqueroStrum > 0) {
+      // Roquero: una mano sostiene el mástil de la guitarra, la otra rasguea las cuerdas cada vez más fuerte
+      const rs = s.roqueroStrum;
+      const gAng = Math.atan2(s.facing.y, s.facing.x) + 0.55;
+      const gx = x + s.facing.x * 4, gy = hipY - 3;
+      const neckX = gx + Math.cos(gAng + Math.PI) * 9, neckY = gy + Math.sin(gAng + Math.PI) * 9;
+      const bodyX = gx + Math.cos(gAng) * 3, bodyY = gy + Math.sin(gAng) * 3;
+      const strumPh = Math.sin((s.rachaClock || 0) * (16 + rs * 22));
+      lHandX = neckX; lHandY = neckY - 2;
+      rHandX = bodyX + Math.cos(gAng + Math.PI / 2) * strumPh * (2 + rs * 3);
+      rHandY = bodyY + Math.sin(gAng + Math.PI / 2) * strumPh * (2 + rs * 3);
+      ctx.moveTo(shoulderX, hipY - 7);
+      ctx.lineTo((shoulderX + lHandX) / 2, (hipY - 7 + lHandY) / 2 - 2);
+      ctx.lineTo(lHandX, lHandY);
+      ctx.moveTo(shoulderX, hipY - 7);
+      ctx.lineTo((shoulderX + rHandX) / 2, (hipY - 7 + rHandY) / 2 - 2);
+      ctx.lineTo(rHandX, rHandY);
+    } else if (s.laserCharge > 0) {
+      // Láser: levanta ambas manos junto a la cabeza, cargando el rayo de los ojos
+      const lc = s.laserCharge;
+      const shY = hipY - 7;
+      const elbowLX = shoulderX - 7, elbowLY = shY - lc * 4;
+      const elbowRX = shoulderX + 7, elbowRY = shY - lc * 4;
+      lHandX = shoulderX - 5 - lc * 2; lHandY = shY - lc * 11;
+      rHandX = shoulderX + 5 + lc * 2; rHandY = shY - lc * 11;
+      ctx.moveTo(shoulderX, shY);
+      ctx.lineTo(elbowLX, elbowLY);
+      ctx.lineTo(lHandX, lHandY);
+      ctx.moveTo(shoulderX, shY);
+      ctx.lineTo(elbowRX, elbowRY);
       ctx.lineTo(rHandX, rHandY);
     } else if (s.moving) {
       // articulated running arms: shoulder → elbow → hand, swinging opposite the legs
@@ -3570,7 +7298,25 @@ function ChaseGame({
     ctx.stroke();
 
     ctx.beginPath();
-    if (s.moving && !victory) {
+    if (s.roqueroJump > 0) {
+      // Roquero: salta con las piernas recogidas hacia atrás, arrastrado por las notas
+      const jp = s.roqueroJump;
+      ctx.moveTo(x, hipY);
+      ctx.lineTo(x - 4, hipY + 3 - jp * 5);
+      ctx.lineTo(x - 5, hipY + 2 - jp * 9);
+      ctx.moveTo(x, hipY);
+      ctx.lineTo(x + 3, hipY + 3 - jp * 4);
+      ctx.lineTo(x + 6, hipY + 1 - jp * 8);
+    } else if (s.laserKneel > 0) {
+      // Súper Láser: se arrodilla sobre una pierna, la otra apoyada al frente
+      const kn = s.laserKneel;
+      ctx.moveTo(x, hipY);
+      ctx.lineTo(x - 4 - kn * 1.5, hipY + 6 + kn * 2);
+      ctx.lineTo(x - 6 - kn * 3, hipY + 7 + kn * 6);
+      ctx.moveTo(x, hipY);
+      ctx.lineTo(x + 3 + kn * 3, hipY + 5 + kn * 3);
+      ctx.lineTo(x + 7 + kn * 5, hipY + 5 + kn * 3);
+    } else if (s.moving && !victory) {
       // articulated running legs: hip → knee → foot, with the swinging foot lifting off the ground
       const legPhaseL = Math.sin(runPhase);
       const legPhaseR = Math.sin(runPhase + Math.PI);
@@ -3599,7 +7345,7 @@ function ChaseGame({
     }
     ctx.stroke();
 
-    if (abilityId === "fase" && !victory) {
+    if (abilityId === "fase" && !victory && !(s.faseArm > 0)) {
       ctx.strokeStyle = ABILITIES.fase.accent;
       ctx.lineWidth = 1.1;
       [[lHandX, lHandY, -1], [rHandX, rHandY, 1]].forEach(([hx, hy, side]) => {
@@ -3679,50 +7425,30 @@ function ChaseGame({
 
   return (
     <div
-      className="w-full flex flex-col items-center py-4 px-3 landscape-fill"
+      className="w-full flex flex-col items-center py-4 px-3 game-root"
       style={{
         background: "#F4F1E9",
         fontFamily: "'Patrick Hand', cursive",
         minHeight: "100vh",
-        touchAction: hud.status === "playing" ? "none" : "pan-y",
-        overscrollBehavior: "contain",
+        touchAction: "pan-y",
         userSelect: "none",
       }}
     >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Kalam:wght@400;700&display=swap');
         .marker{font-family:'Kalam',cursive;}
-        .rotate-hint{ display: none; }
-        @media (orientation: portrait) and (max-width: 900px) {
-          .rotate-hint{
-            display: flex !important;
-            position: fixed; inset: 0; z-index: 100;
-            align-items: center; justify-content: center; text-align: center;
-            background: #12100E; color: #F4F1E9; padding: 24px;
-          }
-        }
-        @media (orientation: landscape) and (max-height: 500px) {
-          .landscape-fill{ padding-top: 4px !important; padding-bottom: 4px !important; }
-          .landscape-fill h1{ display: none; }
-          .landscape-fill .landscape-hide{ display: none !important; }
-          .landscape-canvas-wrap{ max-width: 96vw !important; }
-        }
       `}</style>
 
-      <div className="rotate-hint">
-        <div>
-          <div style={{ fontSize: 40, marginBottom: 8 }}>🔄</div>
-          <p className="marker text-lg">Girá tu teléfono para jugar en horizontal</p>
-        </div>
-      </div>
-
       <h1 className="marker text-2xl sm:text-3xl mb-0.5" style={{ color: "#2B2A28" }}>La persecución</h1>
-      <p className="text-xs sm:text-sm mb-3 text-center landscape-hide" style={{ color: "#5B5850" }}>
+      <p className="text-xs sm:text-sm mb-3 text-center" style={{ color: "#5B5850" }}>
         Desliza el joystick para moverte · Toca el botón para tu habilidad
       </p>
 
       {hud.status === "menu" && (
-        <div className="mb-4 p-4 rounded-lg border-2 w-full max-w-md" style={{ borderColor: "#2B2A28", background: "#FBFAF5" }}>
+        <div
+          className="mb-4 p-4 rounded-lg border-2 w-full max-w-md"
+          style={{ borderColor: "#2B2A28", background: "#FBFAF5" }}
+        >
           {onBackToCreator && (
             <button
               onClick={onBackToCreator}
@@ -3819,7 +7545,7 @@ function ChaseGame({
       )}
 
       <div
-        className="relative rounded-lg border-2 w-full landscape-canvas-wrap"
+        className="relative rounded-lg border-2 w-full"
         style={{ borderColor: "#2B2A28", boxShadow: "3px 3px 0 #2B2A28", maxWidth: 640, aspectRatio: `${VIEW_W} / ${VIEW_H}` }}
       >
         <canvas
@@ -3993,12 +7719,14 @@ function PreviewStickman({ color, ability }) {
         </g>
       )}
 
-      {ability === "clon" && (
-        <g opacity="0.4" transform="translate(-22,10)">
-          <circle cx="110" cy="55" r="26" fill="#9B4F96" stroke="none" />
-          <line x1="110" y1="81" x2="110" y2="190" stroke="#9B4F96" strokeWidth="6" strokeLinecap="round" />
-          <line x1="110" y1="190" x2="75" y2="260" stroke="#9B4F96" strokeWidth="6" strokeLinecap="round" />
-          <line x1="110" y1="190" x2="145" y2="260" stroke="#9B4F96" strokeWidth="6" strokeLinecap="round" />
+      {ability === "luz" && (
+        <g stroke="#FFE066" strokeWidth="2.4" fill="none" strokeLinecap="round">
+          <circle cx="150" cy="120" r="10" fill="#FFF6D8" stroke="none">
+            <animate attributeName="r" values="8;12;8" dur="0.7s" repeatCount="indefinite" />
+          </circle>
+          <path d="M60 60 L120 108 M60 180 L120 132 M40 120 L118 120" strokeWidth="3">
+            <animate attributeName="opacity" values="0.3;1;0.3" dur="0.6s" repeatCount="indefinite" />
+          </path>
         </g>
       )}
 
@@ -4061,31 +7789,26 @@ function PreviewStickman({ color, ability }) {
         </g>
       )}
 
-      {ability === "sierra" && (
-        <>
-          {[{ cx: 60, cy: 150 }, { cx: 160, cy: 150 }].map((p, i) => (
-            <g key={i} transform={`translate(${p.cx},${p.cy})`}>
-              <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="0.6s" repeatCount="indefinite" additive="sum" />
-              <circle r="14" fill="#B7BEC4" />
-              {Array.from({ length: 8 }).map((_, k) => {
-                const a = (k / 8) * Math.PI * 2;
-                return (
-                  <line key={k} x1={Math.cos(a) * 12} y1={Math.sin(a) * 12} x2={Math.cos(a) * 20} y2={Math.sin(a) * 20} stroke="#4A4E52" strokeWidth="2" />
-                );
-              })}
-              <circle r="4" fill="#5C6266" />
-            </g>
-          ))}
-        </>
+      {ability === "metal" && (
+        <g>
+          <circle cx="110" cy="146" r="26" fill="none" stroke="#F0F5FA" strokeWidth="2" opacity="0.8">
+            <animate attributeName="stroke-dasharray" values="0 165;165 165" dur="1s" repeatCount="indefinite" />
+          </circle>
+        </g>
       )}
 
-      {ability === "tornado" && (
-        <g stroke="#5C8AA6" fill="none" strokeWidth="2">
-          {[0, 1, 2].map((i) => (
-            <circle key={i} cx="110" cy="170" r={20 + i * 10} strokeDasharray="10 8" opacity="0.7">
-              <animateTransform attributeName="transform" type="rotate" from={`0 110 170`} to={`360 110 170`} dur={`${1 + i * 0.3}s`} repeatCount="indefinite" />
-            </circle>
-          ))}
+      {ability === "nova" && (
+        <g fill="#FF7A1A" stroke="none">
+          {[0, 1, 2, 3, 4, 5].map((i) => {
+            const ang = (i / 6) * Math.PI * 2;
+            const cx = 110 + Math.cos(ang) * 34;
+            const cy = 170 + Math.sin(ang) * 34;
+            return (
+              <polygon key={i} points={`${cx},${cy - 6} ${cx + 5},${cy + 4} ${cx - 5},${cy + 4}`} opacity="0.85">
+                <animate attributeName="opacity" values="0.3;1;0.3" dur={`${0.8 + i * 0.1}s`} repeatCount="indefinite" />
+              </polygon>
+            );
+          })}
         </g>
       )}
 
@@ -4105,7 +7828,7 @@ function PreviewStickman({ color, ability }) {
         strokeWidth="6"
         strokeLinecap="round"
         fill="none"
-        opacity={ability === "sigilo" ? 0.42 : 1}
+        opacity={1}
       >
         <circle cx="110" cy="55" r="26" fill={color} stroke="none" />
         <line x1="110" y1="81" x2="110" y2="190" />
@@ -4115,11 +7838,14 @@ function PreviewStickman({ color, ability }) {
         <line x1="110" y1="190" x2="145" y2="260" />
       </g>
 
-      {ability === "sigilo" && (
-        <circle cx="110" cy="30" r="9" fill="none" stroke="#7A5EA8" strokeWidth="2">
-          <animate attributeName="r" values="7;13;7" dur="1.6s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.9;0.15;0.9" dur="1.6s" repeatCount="indefinite" />
-        </circle>
+      {ability === "muerte" && (
+        <g>
+          <circle cx="110" cy="140" r="70" fill="none" stroke="#7B1FA2" strokeWidth="3" opacity="0.6">
+            <animate attributeName="r" values="55;75;55" dur="1.4s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.7;0.25;0.7" dur="1.4s" repeatCount="indefinite" />
+          </circle>
+          <path d="M150 130 L172 130 A18 18 0 1 1 158 112" fill="none" stroke="#C77DFF" strokeWidth="4" strokeLinecap="round" />
+        </g>
       )}
     </svg>
   );
